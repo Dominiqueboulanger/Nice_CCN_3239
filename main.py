@@ -5,6 +5,7 @@ import os
 import sqlite3
 
 # --- CONFIGURATION PDF ---
+# Assure-toi que le dossier 'static' existe sur ton GitHub
 app.add_static_files('/static', 'static')
 
 class AppState:
@@ -19,7 +20,6 @@ class AppState:
 state = AppState()
 
 def set_step(s, data=None):
-    # On met à jour l'état AVANT de rafraîchir
     state.step = s
     if data: 
         state.choix.update(data)
@@ -35,8 +35,6 @@ def set_step(s, data=None):
             state.art_cible = data['art_cible']
         if 'annexe_id' in data:
             state.annexe_selectionnee = data['annexe_id']
-    
-    # On déclenche le rafraîchissement de la zone rafraîchissable
     build_ui.refresh()
 
 ui.add_head_html(f'''
@@ -76,7 +74,7 @@ def build_ui():
             'search_btn': 'Aller',
             'step1_title': 'Quel est votre métier ?',
             'step2_title': 'Quelle est votre situation ?', 
-            'gestion': 'LA GESTION DU CONTRAT',             
+            'gestion': 'LA GESTION DU CONTRAT',              
             'fin': 'LA FIN DU CONTRAT',                    
             'annexes_btn': '📚 ANNEXES (Résumés & PDF)',
             'back': '⬅️ RETOUR',
@@ -116,10 +114,7 @@ def build_ui():
         if state.step != 1:
             ui.button(txt['home'], on_click=lambda: (state.__init__(), build_ui.refresh())).props('flat icon=home').classes('text-blue-500 font-bold mb-2 self-start')
 
-        # --- ETAPE 1 : ACCUEIL ---
         if state.step == 1:
-            # 1. On définit les données avec les deux versions linguistiques
-            # J'ai inclus votre modification pour le 5ème métier
             METIERS_DATA = [
                 {"c": "art_am", "fr": "🍼 Assistant Maternel", "en": "🍼 Childminder"},
                 {"c": "art_ef", "fr": "👶 Assistant Parental", "en": "👶 Nanny / Parental Assistant"},
@@ -127,36 +122,27 @@ def build_ui():
                 {"c": "art_ef", "fr": "👵 Assistant de Vie", "en": "👵 Life Assistant"},
                 {"c": "art_sc", "fr": "Autres métiers payés CESU", "en": "Other jobs paid by CESU"}
             ]
-
             ui.label(txt['step1_title']).classes('text-xl font-bold text-slate-800 w-full mb-2')
-            
             with ui.element('div').classes('grid-container'):
                 for m in METIERS_DATA:
-                    # On sélectionne le label selon la langue active dans l'état
                     label_affiche = m['fr'] if state.lang == 'FR' else m['en']
-                    
-                    # On passe bien le label traduit à set_step pour l'en-tête de l'étape suivante
                     ui.button(label_affiche, 
                               on_click=lambda m=m, l=label_affiche: set_step(2, {
                                   'colonne_metier': m['c'], 
                                   'label_metier': l
                               })).classes(css.BTN_STYLE)
-            
             ui.separator().classes('my-4')
             ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')).classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg')
             
-        # --- ETAPE LISTE DES ANNEXES ---
         elif state.step == 'LISTE_ANNEXES':
             ui.label(txt['annexes_btn']).classes('text-xl font-bold mb-1')
             ui.label('Documents à jour au 31 décembre 2024').classes('text-xs text-red-600 font-bold mb-4 px-2 italic uppercase border-l-2 border-red-600')
-            
             conn = sqlite3.connect('CCN_3239.db')
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT numero, titre FROM annexes ORDER BY CAST(numero AS INTEGER)")
             rows = cursor.fetchall()
             conn.close()
-
             with ui.element('div').classes('grid-container w-full'):
                 for row in rows:
                     n, t = row['numero'], row['titre']
@@ -166,7 +152,6 @@ def build_ui():
                             ui.label(f"ANNEXE N°{n}").classes('text-[10px] font-black text-blue-600 uppercase tracking-widest')
                             ui.label(t.upper()).classes('text-[10px] font-bold leading-tight text-slate-700 uppercase')
 
-        # --- ETAPE DETAIL ANNEXE ---
         elif state.step == 'VOIR_ANNEXE':
             conn = sqlite3.connect('CCN_3239.db')
             conn.row_factory = sqlite3.Row
@@ -174,40 +159,26 @@ def build_ui():
             cursor.execute("SELECT titre, resume_fr, resume_en, numero FROM annexes WHERE numero = ?", (state.annexe_selectionnee,))
             res = cursor.fetchone()
             conn.close()
-            
             if res:
                 resume = res['resume_fr'] if state.lang == 'FR' else res['resume_en']
                 ui.label(res['titre']).classes('text-xl font-black text-blue-900 mb-4 px-2')
                 with ui.card().classes('w-full p-6 bg-white border-t-4 border-blue-900 shadow-md rounded-2xl'):
                     ui.markdown(resume if resume else "Résumé à venir...")
-                
                 pdf_url = f"/static/Annexe_{res['numero']}.pdf"
                 with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl mt-6 items-center'):
                     ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
                     ui.button(icon='download', on_click=lambda: ui.download(pdf_url)).props('round flat color=red-900')
 
-       # --- ETAPE 2 : ORIENTATION (GESTION OU FIN) ---
         elif state.step == 2:
-            # On utilise maintenant step2_title au lieu de step1_title
             ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-2 px-2')
-            
             f = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
             options = db.fetch_options("etape_vie", state.lang, f)
-            
             with ui.element('div').classes('grid-container'):
                 for o in options:
-                    # On détecte si c'est la gestion ou la fin pour traduire le bouton
-                    # "Vie" correspond à "Vie du contrat" (Gestion) dans votre base
-                    if "Vie" in o or "Life" in o:
-                        label_bouton = txt['gestion']
-                    else:
-                        label_bouton = txt['fin']
-                        
+                    label_bouton = txt['gestion'] if ("Vie" in o or "Life" in o) else txt['fin']
                     ui.button(label_bouton, on_click=lambda o=o: set_step(3, {'etape_val': o})).classes(css.BTN_STYLE)
-            
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
-        # --- ETAPES SUIVANTES (Logique simplifiée pour éviter les erreurs d'index) ---
         elif state.step == 3:
             f = f"WHERE (etape_vie = '{state.choix['etape_val']}' OR etape_vie_en = '{state.choix['etape_val']}') AND {col_filtre} != ''"
             fams = db.fetch_options("famille", state.lang, f)
@@ -246,10 +217,9 @@ def build_ui():
 header_area = ui.column().classes('w-full sticky-header')
 content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-4 items-center')
 
-# Premier lancement
+# Premier lancement de l'UI
 build_ui()
 
-
-
+# --- CONFIGURATION SERVEUR ---
 if __name__ in {"__main__", "__mp_main__"}:
     ui.run(reload=False, port=8080, title="Guide CCN")
