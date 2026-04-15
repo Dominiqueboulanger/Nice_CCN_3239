@@ -1,0 +1,6 @@
+## 🏷️ Annexe 3 : Classification
+**L'essentiel :** Explique comment définir l'emploi d'un salarié selon 5 critères (Connaissances, Liberté d'action, Complexité, Responsabilité, Polyvalence).
+
+### 1. Points Clés
+* **Niveau (1 à 8) :** Défini par le total des points obtenus.
+* **Salaire :** Le niveau détermine le salaire horaire minimum garanti.

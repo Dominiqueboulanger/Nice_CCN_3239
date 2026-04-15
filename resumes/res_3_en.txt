@@ -1,0 +1,6 @@
+## 🏷️ Annex 3: Job Classification
+**Core Principle:** Classification is based on actual daily tasks to ensure fair pay.
+
+### 1. Evaluation Factors
+* Jobs are rated on Knowledge, Autonomy, Complexity, Responsibility, and Versatility.
+* Total points determine the **Job Level (1 to 8)**.
