@@ -220,6 +220,11 @@ content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-4 items-cent
 # Premier lancement de l'UI
 build_ui()
 
-# --- CONFIGURATION SERVEUR ---
+# --- CONFIGURATION SERVEUR (LES DERNIÈRES LIGNES) ---
 if __name__ in {"__main__", "__mp_main__"}:
-    ui.run(reload=False, port=8080, title="Guide CCN")
+    ui.run(
+        reload=False, 
+        port=8080, 
+        host='0.0.0.0', 
+        title="Guide CCN"
+    )
