@@ -251,6 +251,5 @@ build_ui()
 
 
 
-# À mettre tout à la fin de main.py
 if __name__ in {"__main__", "__mp_main__"}:
     ui.run(reload=False, port=8080, title="Guide CCN")
