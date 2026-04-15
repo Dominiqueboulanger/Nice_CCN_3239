@@ -249,4 +249,8 @@ content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-4 items-cent
 # Premier lancement
 build_ui()
 
-ui.run(reload=False, port=8080, title="Guide CCN", standalone=False)
+# Ne touchez pas à vos imports ni à votre code au-dessus
+# Remplacez juste le ui.run() final par ce bloc :
+
+if __name__ in {"__main__", "__mp_main__"}:
+    ui.run(reload=False, port=8080, title="Guide CCN")
