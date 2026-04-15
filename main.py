@@ -250,9 +250,7 @@ content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-4 items-cent
 build_ui()
 
 
-# Remplacez juste le ui.run() final par ce bloc :
-# À mettre à la place de l'ancien bloc final
+
+# À mettre tout à la fin de votre fichier main.py
 if __name__ in {"__main__", "__mp_main__"}:
-    ui.run(reload=False, port=8080, title="Guide CCN")
-else:
-    ui.run(reload=False, port=8080, title="Guide CCN")
+    ui.run(reload=False, port=8080, title="Guide CCN", native=False)
