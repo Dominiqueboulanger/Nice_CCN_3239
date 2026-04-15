@@ -222,9 +222,4 @@ build_ui()
 
 # --- CONFIGURATION SERVEUR (LES DERNIÈRES LIGNES) ---
 if __name__ in {"__main__", "__mp_main__"}:
-    ui.run(
-        reload=False, 
-        port=8080, 
-        host='0.0.0.0', 
-        title="Guide CCN"
-    )
+    ui.run(title="Guide CCN", host='0.0.0.0', port=8080, reload=False)
