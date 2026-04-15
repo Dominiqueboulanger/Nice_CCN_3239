@@ -249,4 +249,4 @@ content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-4 items-cent
 # Premier lancement
 build_ui()
 
-ui.run(title="Guide CCN", host='0.0.0.0', port=8000, reload=False)
+ui.run(reload=False, port=8080, title="Guide CCN")
