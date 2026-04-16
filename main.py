@@ -101,11 +101,16 @@ def build_ui():
     txt = UI_TEXT[state.lang]
 
     with header_area:
-        with ui.row().classes('w-full items-center justify-between px-4 py-3'):
-            ui.label(state.code_metier_affiche if state.code_metier_affiche else 'CCN 3239').classes('text-blue-600 font-black text-lg')
-            with ui.row().classes('gap-3'):
-                ui.button('🇫🇷', on_click=lambda: (setattr(state, 'lang', 'FR'), build_ui.refresh())).props('flat').classes('text-2xl p-0')
-                ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-2xl p-0')
+        # On utilise 'header-row' pour bloquer le passage à la ligne
+        with ui.row().classes('w-full px-4 py-3 header-row'):
+            # On ajoute 'truncate' et 'shrink' pour protéger l'espace des drapeaux
+            ui.label(state.code_metier_affiche if state.code_metier_affiche else 'CCN 3239') \
+                .classes('text-blue-600 font-black text-base truncate flex-shrink')
+            
+            # Les drapeaux restent groupés à droite sans bouger
+            with ui.row().classes('gap-3 flex-nowrap items-center flex-none'):
+                ui.button('🇫🇷', on_click=lambda: (setattr(state, 'lang', 'FR'), build_ui.refresh())).props('flat').classes('text-xl p-0')
+                ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-xl p-0')
 
     with content_area:
         # Barre de recherche (cachée sur certaines étapes)
