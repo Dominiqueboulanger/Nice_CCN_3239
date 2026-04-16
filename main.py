@@ -245,7 +245,7 @@ def build_ui():
 
 # --- STRUCTURE DE LA PAGE ---
 header_area = ui.column().classes('w-full sticky-header')
-content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-4 items-center')
+content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
 
 build_ui()
 
