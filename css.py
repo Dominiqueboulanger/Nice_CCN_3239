@@ -56,6 +56,7 @@ STYLE_CSS = '''
         -webkit-backdrop-filter: blur(8px);
         border-bottom: 1px solid #e2e8f0;
         width: 100%;
+        height: 50px; /* On force une hauteur fixe assez basse */
         /* Empêche le contenu de déborder ou de créer une 2ème ligne */
         overflow: hidden; 
     }
@@ -67,6 +68,7 @@ STYLE_CSS = '''
         align-items: center !important;
         justify-content: space-between !important;
         width: 100%;
+        height: 100%; /* Pour centrer verticalement dans les 50px */
     }
 '''
 
