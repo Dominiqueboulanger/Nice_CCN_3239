@@ -40,7 +40,7 @@ def set_step(s, data=None):
 # --- AJOUT DE L'ANIMATION DANS LE HEAD ---
 ui.add_head_html(f'''
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         {css.STYLE_CSS}
         
@@ -140,7 +140,7 @@ def build_ui():
         if state.step == 1:
             METIERS_DATA = [
                 {"c": "art_am", "fr": "Assistant Maternel", "en": "Childminder", "icon": "fa-baby-carriage"},
-                {"c": "art_ef", "fr": "Assistant Parental", "en": "Nanny", "icon": "fa-user-nurse"},
+                {"c": "art_ef", "fr": "Assistant Parental", "en": "Nanny", "icon": "fa-baby"},
                 {"c": "art_ef", "fr": "Employé Familial", "en": "Family Employee", "icon": "fa-house-user"},
                 {"c": "art_ef", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair"},
                 {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
