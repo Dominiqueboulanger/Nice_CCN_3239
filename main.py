@@ -123,7 +123,7 @@ def build_ui():
         with content_area:
         # 1. BOUTON RETOUR À L'ACCUEIL (Correction de la visibilité)
         if state.step != 1:
-            with ui.row().classes('w-full justify-start mb-2'):
+            with ui.row().classes('w-full justify-start mb-0'):
                 ui.button(txt['home'], on_click=lambda: (state.__init__(), build_ui.refresh())) \
                     .props('flat icon=home size=sm') \
                     .classes('text-blue-500 font-bold p-0')
