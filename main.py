@@ -115,7 +115,7 @@ def build_ui():
     with content_area:
         # Barre de recherche (cachée sur certaines étapes)
         if state.step not in ['DIRECT', 6, 'LISTE_ANNEXES', 'VOIR_ANNEXE']:
-            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-4 bg-white'):
+            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-2 bg-white'):
                 with ui.row().classes('w-full items-center p-3'):
                     s_input = ui.input(placeholder="Ex: 139").classes('flex-grow')
                     ui.button(txt['search_btn'], on_click=lambda: set_step('DIRECT', {'art_cible': s_input.value})).props('flat').classes('font-bold')
