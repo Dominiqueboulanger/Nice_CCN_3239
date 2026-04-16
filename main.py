@@ -120,10 +120,18 @@ def build_ui():
                     s_input = ui.input(placeholder="Ex: 139").classes('flex-grow')
                     ui.button(txt['search_btn'], on_click=lambda: set_step('DIRECT', {'art_cible': s_input.value})).props('flat').classes('font-bold')
 
+        with content_area:
+        # 1. BOUTON RETOUR À L'ACCUEIL (Correction de la visibilité)
         if state.step != 1:
-            ui.button(txt['home'], on_click=lambda: (state.__init__(), build_ui.refresh())).props('flat icon=home').classes('text-blue-500 font-bold mb-2 self-start')
+            with ui.row().classes('w-full justify-start mb-2'):
+                ui.button(txt['home'], on_click=lambda: (state.__init__(), build_ui.refresh())) \
+                    .props('flat icon=home size=sm') \
+                    .classes('text-blue-500 font-bold p-0')
 
-        # --- ETAPE 1 : ACCUEIL (Avec Zoom Arrière) ---
+        # 2. BARRE DE RECHERCHE
+        if state.step not in ['DIRECT', 6, 'LISTE_ANNEXES', 'VOIR_ANNEXE']:
+            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-4 bg-white'):
+                # ... (votre code de recherche actuel)  # --- ETAPE 1 : ACCUEIL (Avec Zoom Arrière) ---
         if state.step == 1:
             # Application de la classe zoom-page définie dans css.py
             with ui.column().classes('w-full items-center zoom-page'):
