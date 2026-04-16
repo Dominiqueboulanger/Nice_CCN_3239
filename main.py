@@ -5,7 +5,6 @@ import os
 import sqlite3
 
 # --- CONFIGURATION FICHIERS STATIQUES ---
-# Assure-toi que le dossier 'static' existe sur ton bureau à côté de main.py
 app.add_static_files('/static', 'static')
 
 class AppState:
@@ -101,27 +100,16 @@ def build_ui():
     txt = UI_TEXT[state.lang]
 
     with header_area:
-        # On utilise 'header-row' pour bloquer le passage à la ligne
         with ui.row().classes('w-full px-4 py-3 header-row'):
-            # On ajoute 'truncate' et 'shrink' pour protéger l'espace des drapeaux
             ui.label(state.code_metier_affiche if state.code_metier_affiche else 'CCN 3239') \
                 .classes('text-blue-600 font-black text-base truncate flex-shrink')
             
-            # Les drapeaux restent groupés à droite sans bouger
             with ui.row().classes('gap-3 flex-nowrap items-center flex-none'):
                 ui.button('🇫🇷', on_click=lambda: (setattr(state, 'lang', 'FR'), build_ui.refresh())).props('flat').classes('text-xl p-0')
                 ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-xl p-0')
 
     with content_area:
-        # Barre de recherche (cachée sur certaines étapes)
-        if state.step not in ['DIRECT', 6, 'LISTE_ANNEXES', 'VOIR_ANNEXE']:
-            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-2 bg-white'):
-                with ui.row().classes('w-full items-center p-3'):
-                    s_input = ui.input(placeholder="Ex: 139").classes('flex-grow')
-                    ui.button(txt['search_btn'], on_click=lambda: set_step('DIRECT', {'art_cible': s_input.value})).props('flat').classes('font-bold')
-
-        with content_area:
-        # 1. BOUTON RETOUR À L'ACCUEIL (Correction de la visibilité)
+        # 1. BOUTON RETOUR À L'ACCUEIL
         if state.step != 1:
             with ui.row().classes('w-full justify-start mb-0'):
                 ui.button(txt['home'], on_click=lambda: (state.__init__(), build_ui.refresh())) \
@@ -130,10 +118,13 @@ def build_ui():
 
         # 2. BARRE DE RECHERCHE
         if state.step not in ['DIRECT', 6, 'LISTE_ANNEXES', 'VOIR_ANNEXE']:
-            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-4 bg-white'):
-                # ... (votre code de recherche actuel)  # --- ETAPE 1 : ACCUEIL (Avec Zoom Arrière) ---
+            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-2 bg-white'):
+                with ui.row().classes('w-full items-center p-3'):
+                    s_input = ui.input(placeholder="Ex: 139").classes('flex-grow')
+                    ui.button(txt['search_btn'], on_click=lambda: set_step('DIRECT', {'art_cible': s_input.value})).props('flat').classes('font-bold')
+
+        # --- ETAPE 1 : ACCUEIL ---
         if state.step == 1:
-            # Application de la classe zoom-page définie dans css.py
             with ui.column().classes('w-full items-center zoom-page'):
                 METIERS_DATA = [
                     {"c": "art_am", "fr": "Assistant Maternel", "en": "Childminder", "icon": "fa-baby-carriage"},
@@ -155,8 +146,6 @@ def build_ui():
                                 ui.label(label_affiche).classes('text-[11px] font-bold text-center text-slate-800 uppercase leading-tight')
                 
                 ui.separator().classes('my-4 w-11/12')
-                
-                # Le bouton Annexes (Visible grâce au zoom)
                 ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
                     .classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold animate-entrance shadow-lg')
 
@@ -242,6 +231,7 @@ def build_ui():
 
         elif state.step == 'DIRECT':
             render_result(state.art_cible, txt)
+            ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
 # --- STRUCTURE DE LA PAGE ---
 header_area = ui.column().classes('w-full sticky-header')
@@ -249,5 +239,4 @@ content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-cent
 
 build_ui()
 
-# Lancement de l'application
 ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False)
