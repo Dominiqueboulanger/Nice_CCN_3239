@@ -5,7 +5,6 @@ import os
 import sqlite3
 
 # --- CONFIGURATION PDF ---
-# Assure-toi que le dossier 'static' existe sur ton GitHub
 app.add_static_files('/static', 'static')
 
 class AppState:
@@ -35,14 +34,38 @@ def set_step(s, data=None):
             state.art_cible = data['art_cible']
         if 'annexe_id' in data:
             state.annexe_selectionnee = data['annexe_id']
+    
     build_ui.refresh()
 
+# --- AJOUT DE L'ANIMATION DANS LE HEAD ---
 ui.add_head_html(f'''
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <style>{css.STYLE_CSS}</style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        {css.STYLE_CSS}
+        
+        @keyframes entranceAnim {{
+            0% {{ 
+                transform: translateY(200px) scale(1.1); 
+                opacity: 0;
+                box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            }}
+            70% {{
+                transform: translateY(-20px) scale(1);
+                opacity: 1;
+            }}
+            100% {{ 
+                transform: translateY(0) scale(1); 
+                opacity: 1;
+            }}
+        }}
+
+        .animate-entrance {{
+            animation: entranceAnim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }}
+    </style>
 ''')
 
-# --- FONCTION DE RENDU DES ARTICLES ---
 def render_result(num_article, txt):
     if not num_article or num_article == "None":
         ui.label("⚠️ Article non renseigné").classes('text-orange-500 p-4 bg-orange-50 rounded-xl w-full')
@@ -59,7 +82,6 @@ def render_result(num_article, txt):
             with ui.expansion(txt.get('official', '⚖️ Texte officiel')).classes('w-full text-sm text-slate-500 border-t mt-4'):
                 ui.markdown(art['texte_integral']).classes('text-[12px] italic')
 
-# --- ZONE PRINCIPALE RAFRAÎCHISSABLE ---
 @ui.refreshable
 def build_ui():
     content_area.clear()
@@ -75,7 +97,7 @@ def build_ui():
             'step1_title': 'Quel est votre métier ?',
             'step2_title': 'Quelle est votre situation ?', 
             'gestion': 'LA GESTION DU CONTRAT',              
-            'fin': 'LA FIN DU CONTRAT',                    
+            'fin': 'LA FIN DU CONTRAT',                     
             'annexes_btn': '📚 ANNEXES (Résumés & PDF)',
             'back': '⬅️ RETOUR',
             'official_pdf': '📄 Consulter le PDF Officiel',
@@ -87,7 +109,7 @@ def build_ui():
             'search_btn': 'Go',
             'step1_title': 'What is your job ?',
             'step2_title': 'What is your situation ?',   
-            'gestion': 'CONTRACT MANAGEMENT',              
+            'gestion': 'CONTRACT MANAGEMENT',               
             'fin': 'END OF CONTRACT',                
             'annexes_btn': '📚 ANNEXES (Summary & PDF)',
             'back': '⬅️ BACK',
@@ -114,26 +136,34 @@ def build_ui():
         if state.step != 1:
             ui.button(txt['home'], on_click=lambda: (state.__init__(), build_ui.refresh())).props('flat icon=home').classes('text-blue-500 font-bold mb-2 self-start')
 
+        # --- ETAPE 1 : ACCUEIL ---
         if state.step == 1:
             METIERS_DATA = [
-                {"c": "art_am", "fr": "🍼 Assistant Maternel", "en": "🍼 Childminder"},
-                {"c": "art_ef", "fr": "👶 Assistant Parental", "en": "👶 Nanny / Parental Assistant"},
-                {"c": "art_ef", "fr": "🏠 Employé Familial", "en": "🏠 Family Employee"},
-                {"c": "art_ef", "fr": "👵 Assistant de Vie", "en": "👵 Life Assistant"},
-                {"c": "art_sc", "fr": "Autres métiers payés CESU", "en": "Other jobs paid by CESU"}
+                {"c": "art_am", "fr": "Assistant Maternel", "en": "Childminder", "icon": "fa-baby-carriage"},
+                {"c": "art_ef", "fr": "Assistant Parental", "en": "Nanny", "icon": "fa-user-nurse"},
+                {"c": "art_ef", "fr": "Employé Familial", "en": "Family Employee", "icon": "fa-house-user"},
+                {"c": "art_ef", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair-move"},
+                {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
             ]
+
             ui.label(txt['step1_title']).classes('text-xl font-bold text-slate-800 w-full mb-2')
-            with ui.element('div').classes('grid-container'):
+            
+            with ui.element('div').classes('grid-container w-full'):
                 for m in METIERS_DATA:
                     label_affiche = m['fr'] if state.lang == 'FR' else m['en']
-                    ui.button(label_affiche, 
-                              on_click=lambda m=m, l=label_affiche: set_step(2, {
-                                  'colonne_metier': m['c'], 
-                                  'label_metier': l
-                              })).classes(css.BTN_STYLE)
-            ui.separator().classes('my-4')
-            ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')).classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg')
+                    with ui.card().classes('w-full bg-white border-2 border-slate-200 rounded-2xl shadow-sm cursor-pointer hover:bg-blue-50 p-4 transition-all') \
+                        .on('click', lambda m=m, l=label_affiche: set_step(2, {'colonne_metier': m['c'], 'label_metier': l})):
+                        with ui.column().classes('items-center justify-center w-full gap-2'):
+                            ui.html(f'<i class="fa-solid {m["icon"]} text-3xl text-black"></i>')
+                            ui.label(label_affiche).classes('text-[11px] font-bold text-center text-slate-800 uppercase leading-tight')
             
+            ui.separator().classes('my-4')
+            
+            # --- LE BOUTON ANIMÉ ---
+            ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
+                .classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg animate-entrance')
+
+        # [Le reste du code reste identique]
         elif state.step == 'LISTE_ANNEXES':
             ui.label(txt['annexes_btn']).classes('text-xl font-bold mb-1')
             ui.label('Documents à jour au 31 décembre 2024').classes('text-xs text-red-600 font-bold mb-4 px-2 italic uppercase border-l-2 border-red-600')
@@ -213,13 +243,9 @@ def build_ui():
         elif state.step == 'DIRECT':
             render_result(state.art_cible, txt)
 
-# --- STRUCTURE FIXE ---
 header_area = ui.column().classes('w-full sticky-header')
 content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-4 items-center')
 
-# Premier lancement de l'UI
 build_ui()
 
-# --- CONFIGURATION SERVEUR (LES DERNIÈRES LIGNES) ---
-if __name__ in {"__main__", "__mp_main__"}:
-    ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False)
+ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False)
