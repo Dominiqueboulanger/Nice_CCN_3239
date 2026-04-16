@@ -4,7 +4,8 @@ import css
 import os
 import sqlite3
 
-# --- CONFIGURATION PDF ---
+# --- CONFIGURATION FICHIERS STATIQUES ---
+# Assure-toi que le dossier 'static' existe sur ton bureau à côté de main.py
 app.add_static_files('/static', 'static')
 
 class AppState:
@@ -37,33 +38,13 @@ def set_step(s, data=None):
     
     build_ui.refresh()
 
-# --- AJOUT DE L'ANIMATION DANS LE HEAD ---
+# --- INJECTION DU CSS ET CONFIGURATION HEAD ---
 ui.add_head_html(f'''
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        {css.STYLE_CSS}
-        
-        @keyframes entranceAnim {{
-            0% {{ 
-                transform: translateY(200px) scale(1.1); 
-                opacity: 0;
-                box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            }}
-            70% {{
-                transform: translateY(-20px) scale(1);
-                opacity: 1;
-            }}
-            100% {{ 
-                transform: translateY(0) scale(1); 
-                opacity: 1;
-            }}
-        }}
-
-        .animate-entrance {{
-            animation: entranceAnim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }}
-    </style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+{css.STYLE_CSS}
+</style>
 ''')
 
 def render_result(num_article, txt):
@@ -97,7 +78,7 @@ def build_ui():
             'step1_title': 'Quel est votre métier ?',
             'step2_title': 'Quelle est votre situation ?', 
             'gestion': 'LA GESTION DU CONTRAT',              
-            'fin': 'LA FIN DU CONTRAT',                     
+            'fin': 'LA FIN DU CONTRAT',                      
             'annexes_btn': '📚 ANNEXES (Résumés & PDF)',
             'back': '⬅️ RETOUR',
             'official_pdf': '📄 Consulter le PDF Officiel',
@@ -109,7 +90,7 @@ def build_ui():
             'search_btn': 'Go',
             'step1_title': 'What is your job ?',
             'step2_title': 'What is your situation ?',   
-            'gestion': 'CONTRACT MANAGEMENT',               
+            'gestion': 'CONTRACT MANAGEMENT',                
             'fin': 'END OF CONTRACT',                
             'annexes_btn': '📚 ANNEXES (Summary & PDF)',
             'back': '⬅️ BACK',
@@ -127,8 +108,9 @@ def build_ui():
                 ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-2xl p-0')
 
     with content_area:
+        # Barre de recherche (cachée sur certaines étapes)
         if state.step not in ['DIRECT', 6, 'LISTE_ANNEXES', 'VOIR_ANNEXE']:
-            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-4'):
+            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-4 bg-white'):
                 with ui.row().classes('w-full items-center p-3'):
                     s_input = ui.input(placeholder="Ex: 139").classes('flex-grow')
                     ui.button(txt['search_btn'], on_click=lambda: set_step('DIRECT', {'art_cible': s_input.value})).props('flat').classes('font-bold')
@@ -136,50 +118,54 @@ def build_ui():
         if state.step != 1:
             ui.button(txt['home'], on_click=lambda: (state.__init__(), build_ui.refresh())).props('flat icon=home').classes('text-blue-500 font-bold mb-2 self-start')
 
-        # --- ETAPE 1 : ACCUEIL ---
+        # --- ETAPE 1 : ACCUEIL (Avec Zoom Arrière) ---
         if state.step == 1:
-            METIERS_DATA = [
-                {"c": "art_am", "fr": "Assistant Maternel", "en": "Childminder", "icon": "fa-baby-carriage"},
-                {"c": "art_ef", "fr": "Assistant Parental", "en": "Nanny", "icon": "fa-baby"},
-                {"c": "art_ef", "fr": "Employé Familial", "en": "Family Employee", "icon": "fa-house-user"},
-                {"c": "art_ef", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair"},
-                {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
-            ]
+            # Application de la classe zoom-page définie dans css.py
+            with ui.column().classes('w-full items-center zoom-page'):
+                METIERS_DATA = [
+                    {"c": "art_am", "fr": "Assistant Maternel", "en": "Childminder", "icon": "fa-baby-carriage"},
+                    {"c": "art_ef", "fr": "Assistant Parental", "en": "Nanny", "icon": "fa-baby"},
+                    {"c": "art_ef", "fr": "Employé Familial", "en": "Family Employee", "icon": "fa-house-user"},
+                    {"c": "art_ef", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair"},
+                    {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
+                ]
 
-            ui.label(txt['step1_title']).classes('text-xl font-bold text-slate-800 w-full mb-2')
-            
-            with ui.element('div').classes('grid-container w-full'):
-                for m in METIERS_DATA:
-                    label_affiche = m['fr'] if state.lang == 'FR' else m['en']
-                    with ui.card().classes('w-full bg-white border-2 border-slate-200 rounded-2xl shadow-sm cursor-pointer hover:bg-blue-50 p-4 transition-all') \
-                        .on('click', lambda m=m, l=label_affiche: set_step(2, {'colonne_metier': m['c'], 'label_metier': l})):
-                        with ui.column().classes('items-center justify-center w-full gap-2'):
-                            ui.html(f'<i class="fa-solid {m["icon"]} text-3xl text-black"></i>')
-                            ui.label(label_affiche).classes('text-[11px] font-bold text-center text-slate-800 uppercase leading-tight')
-            
-            ui.separator().classes('my-4')
-            
-            # --- LE BOUTON ANIMÉ ---
-            ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
-                .classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg animate-entrance')
+                ui.label(txt['step1_title']).classes('text-xl font-bold text-slate-800 w-full mb-2 px-2')
+                
+                with ui.element('div').classes('grid-container w-full'):
+                    for m in METIERS_DATA:
+                        label_affiche = m['fr'] if state.lang == 'FR' else m['en']
+                        with ui.card().classes('w-full bg-white cursor-pointer p-4 transition-all') \
+                            .on('click', lambda m=m, l=label_affiche: set_step(2, {'colonne_metier': m['c'], 'label_metier': l})):
+                            with ui.column().classes('items-center justify-center w-full gap-2'):
+                                ui.html(f'<i class="fa-solid {m["icon"]} text-3xl text-black"></i>')
+                                ui.label(label_affiche).classes('text-[11px] font-bold text-center text-slate-800 uppercase leading-tight')
+                
+                ui.separator().classes('my-4 w-11/12')
+                
+                # Le bouton Annexes (Visible grâce au zoom)
+                ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
+                    .classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold animate-entrance shadow-lg')
 
-        # [Le reste du code reste identique]
+        # --- ETAPES SUIVANTES ---
         elif state.step == 'LISTE_ANNEXES':
             ui.label(txt['annexes_btn']).classes('text-xl font-bold mb-1')
-            ui.label('Documents à jour au 31 décembre 2024').classes('text-xs text-red-600 font-bold mb-4 px-2 italic uppercase border-l-2 border-red-600')
+            ui.label('Documents au 31/12/2024').classes('text-xs text-red-600 font-bold mb-4 italic uppercase border-l-2 border-red-600 px-2')
+            
             conn = sqlite3.connect('CCN_3239.db')
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT numero, titre FROM annexes ORDER BY CAST(numero AS INTEGER)")
             rows = cursor.fetchall()
             conn.close()
+            
             with ui.element('div').classes('grid-container w-full'):
                 for row in rows:
                     n, t = row['numero'], row['titre']
                     with ui.card().classes('w-full h-28 bg-white text-black border-2 border-slate-300 rounded-2xl shadow-md hover:bg-blue-50 cursor-pointer p-0 overflow-hidden') \
                         .on('click', lambda n=n: set_step('VOIR_ANNEXE', {'annexe_id': n})):
                         with ui.column().classes('items-center justify-center p-3 gap-1 w-full text-center h-full'):
-                            ui.label(f"ANNEXE N°{n}").classes('text-[10px] font-black text-blue-600 uppercase tracking-widest')
+                            ui.label(f"ANNEXE N°{n}").classes('text-[10px] font-black text-blue-600 uppercase')
                             ui.label(t.upper()).classes('text-[10px] font-bold leading-tight text-slate-700 uppercase')
 
         elif state.step == 'VOIR_ANNEXE':
@@ -194,6 +180,7 @@ def build_ui():
                 ui.label(res['titre']).classes('text-xl font-black text-blue-900 mb-4 px-2')
                 with ui.card().classes('w-full p-6 bg-white border-t-4 border-blue-900 shadow-md rounded-2xl'):
                     ui.markdown(resume if resume else "Résumé à venir...")
+                
                 pdf_url = f"/static/Annexe_{res['numero']}.pdf"
                 with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl mt-6 items-center'):
                     ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
@@ -203,7 +190,7 @@ def build_ui():
             ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-2 px-2')
             f = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
             options = db.fetch_options("etape_vie", state.lang, f)
-            with ui.element('div').classes('grid-container'):
+            with ui.column().classes('w-full'):
                 for o in options:
                     label_bouton = txt['gestion'] if ("Vie" in o or "Life" in o) else txt['fin']
                     ui.button(label_bouton, on_click=lambda o=o: set_step(3, {'etape_val': o})).classes(css.BTN_STYLE)
@@ -212,14 +199,14 @@ def build_ui():
         elif state.step == 3:
             f = f"WHERE (etape_vie = '{state.choix['etape_val']}' OR etape_vie_en = '{state.choix['etape_val']}') AND {col_filtre} != ''"
             fams = db.fetch_options("famille", state.lang, f)
-            with ui.element('div').classes('grid-container'):
+            with ui.column().classes('w-full'):
                 for f_v in fams: ui.button(f_v, on_click=lambda f_v=f_v: set_step(4, {'famille_val': f_v})).classes(css.BTN_STYLE)
             ui.button(txt['back'], on_click=lambda: set_step(2)).props('flat').classes('w-full mt-4')
 
         elif state.step == 4:
             f = f"WHERE (famille = '{state.choix['famille_val']}' OR famille_en = '{state.choix['famille_val']}') AND {col_filtre} != ''"
             thms = db.fetch_options("theme", state.lang, f)
-            with ui.element('div').classes('grid-container'):
+            with ui.column().classes('w-full'):
                 for t in thms: ui.button(t, on_click=lambda t=t: set_step(5, {'theme': t})).classes(css.BTN_STYLE)
             ui.button(txt['back'], on_click=lambda: set_step(3)).props('flat').classes('w-full mt-4')
 
@@ -243,9 +230,11 @@ def build_ui():
         elif state.step == 'DIRECT':
             render_result(state.art_cible, txt)
 
+# --- STRUCTURE DE LA PAGE ---
 header_area = ui.column().classes('w-full sticky-header')
 content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-4 items-center')
 
 build_ui()
 
+# Lancement de l'application
 ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False)
