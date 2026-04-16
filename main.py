@@ -142,7 +142,7 @@ def build_ui():
                 {"c": "art_am", "fr": "Assistant Maternel", "en": "Childminder", "icon": "fa-baby-carriage"},
                 {"c": "art_ef", "fr": "Assistant Parental", "en": "Nanny", "icon": "fa-user-nurse"},
                 {"c": "art_ef", "fr": "Employé Familial", "en": "Family Employee", "icon": "fa-house-user"},
-                {"c": "art_ef", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair-move"},
+                {"c": "art_ef", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair"},
                 {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
             ]
 
