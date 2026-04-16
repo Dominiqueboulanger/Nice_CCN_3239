@@ -32,7 +32,7 @@ STYLE_CSS = '''
         }
         65% {
             /* Remonte de ~2cm au-dessus de sa place finale (-60px) */
-            transform: translateY(-120px) scale(1.05);
+            transform: translateY(-200px) scale(1.05);
             opacity: 1;
             filter: blur(0px);
         }
