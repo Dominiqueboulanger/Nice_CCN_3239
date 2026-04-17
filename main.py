@@ -7,10 +7,7 @@ import sqlite3
 # --- CONFIGURATION FICHIERS STATIQUES ---
 app.add_static_files('/static', 'static')
 
-# --- LOGIQUE DE GESTION DES ÉTAPES (SESSIONS ISOLÉES) ---
-
 def set_step(s, data=None):
-    # Accès au stockage individuel de l'utilisateur
     state = app.storage.user.get('state', {})
     state['step'] = s
     if data: 
@@ -58,7 +55,6 @@ def render_result(num_article, txt, current_lang):
 
 @ui.refreshable
 def build_ui():
-    # Récupération du state de l'utilisateur actuel
     state = app.storage.user.get('state')
     if not state: return
 
@@ -110,7 +106,6 @@ def build_ui():
                 ui.button('🇬🇧', on_click=lambda: change_lang('EN')).props('flat').classes('text-xl p-0')
 
     with content_area:
-        # 1. BOUTON RETOUR À L'ACCUEIL
         if state['step'] != 1:
             with ui.row().classes('w-full justify-start mb-0'):
                 def go_home():
@@ -118,18 +113,15 @@ def build_ui():
                     app.storage.user['state']['choix'] = {}
                     app.storage.user['state']['code_metier_affiche'] = ""
                     build_ui.refresh()
-                ui.button(txt['home'], on_click=go_home) \
-                    .props('flat icon=home size=sm') \
-                    .classes('text-blue-500 font-bold p-0')
+                ui.button(txt['home'], on_click=go_home).props('flat icon=home size=sm').classes('text-blue-500 font-bold p-0')
 
-        # 2. BARRE DE RECHERCHE
         if state['step'] not in ['DIRECT', 6, 'LISTE_ANNEXES', 'VOIR_ANNEXE']:
             with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-2 bg-white'):
                 with ui.row().classes('w-full items-center p-3'):
                     s_input = ui.input(placeholder="Ex: 139").classes('flex-grow')
                     ui.button(txt['search_btn'], on_click=lambda: set_step('DIRECT', {'art_cible': s_input.value})).props('flat').classes('font-bold')
 
-        # --- ETAPE 1 : ACCUEIL ---
+        # --- RÉTABLISSEMENT DU DESIGN DE L'ÉTAPE 1 ---
         if state['step'] == 1:
             with ui.column().classes('w-full items-center zoom-page'):
                 METIERS_DATA = [
@@ -140,6 +132,8 @@ def build_ui():
                     {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
                 ]
                 ui.label(txt['step1_title']).classes('text-xl font-bold text-slate-800 w-full mb-2 px-2')
+                
+                # LA GRILLE DE CARTES AVEC ICÔNES
                 with ui.element('div').classes('grid-container w-full'):
                     for m in METIERS_DATA:
                         label_affiche = m['fr'] if state['lang'] == 'FR' else m['en']
@@ -148,11 +142,12 @@ def build_ui():
                             with ui.column().classes('items-center justify-center w-full gap-2'):
                                 ui.html(f'<i class="fa-solid {m["icon"]} text-3xl text-black"></i>')
                                 ui.label(label_affiche).classes('text-[11px] font-bold text-center text-slate-800 uppercase leading-tight')
+                
                 ui.separator().classes('my-4 w-11/12')
                 ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
                     .classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold animate-entrance shadow-lg')
 
-        # --- ETAPES SUIVANTES ---
+        # --- AUTRES ÉTAPES ---
         elif state['step'] == 'LISTE_ANNEXES':
             ui.label(txt['annexes_btn']).classes('text-xl font-bold mb-1')
             ui.label('Documents au 31/12/2024').classes('text-xs text-red-600 font-bold mb-4 italic uppercase border-l-2 border-red-600 px-2')
@@ -226,25 +221,16 @@ def build_ui():
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
 # --- STRUCTURE DE LA PAGE ---
+header_area = ui.column().classes('w-full sticky-header')
+content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
 
 @ui.page('/')
 def main_page():
-    # Initialisation ou Reset à l'accueil lors de l'accès à l'URL racine
     if 'state' not in app.storage.user:
         app.storage.user['state'] = {
             'step': 1, 'lang': 'FR', 'choix': {}, 
             'code_metier_affiche': "", 'art_cible': "", 'annexe_selectionnee': None
         }
-    else:
-        # Bug 2 : On force le retour à l'accueil
-        app.storage.user['state']['step'] = 1
-        app.storage.user['state']['choix'] = {}
-        app.storage.user['state']['code_metier_affiche'] = ""
-
-    global header_area, content_area
-    header_area = ui.column().classes('w-full sticky-header')
-    content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
     build_ui()
 
-# Secret key indispensable pour activer app.storage.user
 ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False, storage_secret='MA_CLE_SEC_3239')
