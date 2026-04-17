@@ -5,6 +5,7 @@ import os
 import sqlite3
 
 # --- CONFIGURATION FICHIERS STATIQUES ---
+# On le laisse en global, c'est autorisé
 app.add_static_files('/static', 'static')
 
 def set_step(s, data=None):
@@ -27,15 +28,6 @@ def set_step(s, data=None):
     
     app.storage.user['state'] = state
     build_ui.refresh()
-
-# --- INJECTION DU CSS ET CONFIGURATION HEAD ---
-ui.add_head_html(f'''
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-{css.STYLE_CSS}
-</style>
-''')
 
 def render_result(num_article, txt, current_lang):
     if not num_article or num_article == "None":
@@ -121,7 +113,6 @@ def build_ui():
                     s_input = ui.input(placeholder="Ex: 139").classes('flex-grow')
                     ui.button(txt['search_btn'], on_click=lambda: set_step('DIRECT', {'art_cible': s_input.value})).props('flat').classes('font-bold')
 
-        # --- RÉTABLISSEMENT DU DESIGN DE L'ÉTAPE 1 ---
         if state['step'] == 1:
             with ui.column().classes('w-full items-center zoom-page'):
                 METIERS_DATA = [
@@ -132,8 +123,6 @@ def build_ui():
                     {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
                 ]
                 ui.label(txt['step1_title']).classes('text-xl font-bold text-slate-800 w-full mb-2 px-2')
-                
-                # LA GRILLE DE CARTES AVEC ICÔNES
                 with ui.element('div').classes('grid-container w-full'):
                     for m in METIERS_DATA:
                         label_affiche = m['fr'] if state['lang'] == 'FR' else m['en']
@@ -142,12 +131,10 @@ def build_ui():
                             with ui.column().classes('items-center justify-center w-full gap-2'):
                                 ui.html(f'<i class="fa-solid {m["icon"]} text-3xl text-black"></i>')
                                 ui.label(label_affiche).classes('text-[11px] font-bold text-center text-slate-800 uppercase leading-tight')
-                
                 ui.separator().classes('my-4 w-11/12')
                 ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
                     .classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold animate-entrance shadow-lg')
 
-        # --- AUTRES ÉTAPES ---
         elif state['step'] == 'LISTE_ANNEXES':
             ui.label(txt['annexes_btn']).classes('text-xl font-bold mb-1')
             ui.label('Documents au 31/12/2024').classes('text-xs text-red-600 font-bold mb-4 italic uppercase border-l-2 border-red-600 px-2')
@@ -221,16 +208,28 @@ def build_ui():
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
 # --- STRUCTURE DE LA PAGE ---
-header_area = ui.column().classes('w-full sticky-header')
-content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
 
 @ui.page('/')
 def main_page():
+    # 1. Injection du CSS SPECIFIQUE à la page (obligatoire avec ui.page)
+    ui.add_head_html(f'''
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>{css.STYLE_CSS}</style>
+    ''')
+
+    # 2. Initialisation de la session
     if 'state' not in app.storage.user:
         app.storage.user['state'] = {
             'step': 1, 'lang': 'FR', 'choix': {}, 
             'code_metier_affiche': "", 'art_cible': "", 'annexe_selectionnee': None
         }
+    
+    # 3. Définition des zones globales pour build_ui
+    global header_area, content_area
+    header_area = ui.column().classes('w-full sticky-header')
+    content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
+    
     build_ui()
 
 ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False, storage_secret='MA_CLE_SEC_3239')
