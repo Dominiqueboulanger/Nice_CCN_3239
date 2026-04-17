@@ -211,25 +211,40 @@ def build_ui():
 
 @ui.page('/')
 def main_page():
-    # 1. Injection du CSS SPECIFIQUE à la page (obligatoire avec ui.page)
+    # 1. Injection du CSS
     ui.add_head_html(f'''
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>{css.STYLE_CSS}</style>
     ''')
 
-    # 2. Initialisation de la session
+    # 2. Initialisation de la session unique
     if 'state' not in app.storage.user:
         app.storage.user['state'] = {
             'step': 1, 'lang': 'FR', 'choix': {}, 
             'code_metier_affiche': "", 'art_cible': "", 'annexe_selectionnee': None
         }
     
-    # 3. Définition des zones globales pour build_ui
+    # 3. CREATION DES ZONES (Sans conflit global)
+    # L'astuce est de définir les variables globales à l'intérieur de la fonction page
     global header_area, content_area
-    header_area = ui.column().classes('w-full sticky-header')
-    content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
     
+    with ui.column().classes('w-full sticky-header') as h:
+        header_area = h
+        
+    with ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center') as c:
+        content_area = c
+    
+    # 4. Lancement
     build_ui()
 
-ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False, storage_secret='MA_CLE_SEC_3239')
+# --- LANCEMENT ---
+# IMPORTANT : Change 'MA_CLE_SEC_3239' par une clé un peu plus complexe pour forcer 
+# les navigateurs à créer un nouveau cookie de session propre.
+ui.run(
+    title="Guide CCN", 
+    host='0.0.0.0', 
+    port=9000, 
+    reload=False, 
+    storage_secret='CLE_SÉCURISÉE_PRODUCTION_2026_X'
+)
