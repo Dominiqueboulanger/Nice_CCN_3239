@@ -7,14 +7,13 @@ import sqlite3
 # --- CONFIGURATION FICHIERS STATIQUES ---
 app.add_static_files('/static', 'static')
 
-# --- LOGIQUE DE GESTION DES ÉTAPES (INDIVIDUELLE) ---
+# --- LOGIQUE DE GESTION DES ÉTAPES (SESSIONS ISOLÉES) ---
 
 def set_step(s, data=None):
-    # Récupération du state de l'utilisateur actuel
+    # Accès au stockage individuel de l'utilisateur
     state = app.storage.user.get('state', {})
     state['step'] = s
-    
-    if data:
+    if data: 
         state['choix'].update(data)
         if 'colonne_metier' in data:
             col = data['colonne_metier']
@@ -29,21 +28,7 @@ def set_step(s, data=None):
         if 'annexe_id' in data:
             state['annexe_selectionnee'] = data['annexe_id']
     
-    # On ré-enregistre et on rafraîchit
     app.storage.user['state'] = state
-    build_ui.refresh()
-
-def reset_to_home():
-    # Réinitialisation complète des choix mais conservation de la langue
-    current_lang = app.storage.user.get('state', {}).get('lang', 'FR')
-    app.storage.user['state'] = {
-        'step': 1,
-        'lang': current_lang,
-        'choix': {},
-        'code_metier_affiche': "",
-        'art_cible': "",
-        'annexe_selectionnee': None
-    }
     build_ui.refresh()
 
 # --- INJECTION DU CSS ET CONFIGURATION HEAD ---
@@ -55,7 +40,7 @@ ui.add_head_html(f'''
 </style>
 ''')
 
-def render_result(num_article, txt, lang):
+def render_result(num_article, txt, current_lang):
     if not num_article or num_article == "None":
         ui.label("⚠️ Article non renseigné").classes('text-orange-500 p-4 bg-orange-50 rounded-xl w-full')
         return
@@ -64,7 +49,7 @@ def render_result(num_article, txt, lang):
     for art in articles:
         with ui.column().classes('article-card w-full'):
             ui.label(art['affichage_article']).classes('font-bold text-lg text-slate-900')
-            res_col = 'texte_simplifie' if lang == 'FR' else 'texte_simplifie_en'
+            res_col = 'texte_simplifie' if current_lang == 'FR' else 'texte_simplifie_en'
             if art[res_col]:
                 with ui.column().classes('bg-blue-50 p-4 rounded-xl w-full my-3 border border-blue-100'):
                     ui.label(art[res_col]).classes('text-slate-800')
@@ -73,10 +58,9 @@ def render_result(num_article, txt, lang):
 
 @ui.refreshable
 def build_ui():
-    # Accès au state utilisateur
+    # Récupération du state de l'utilisateur actuel
     state = app.storage.user.get('state')
-    if not state:
-        return
+    if not state: return
 
     content_area.clear()
     header_area.clear()
@@ -129,7 +113,12 @@ def build_ui():
         # 1. BOUTON RETOUR À L'ACCUEIL
         if state['step'] != 1:
             with ui.row().classes('w-full justify-start mb-0'):
-                ui.button(txt['home'], on_click=reset_to_home) \
+                def go_home():
+                    app.storage.user['state']['step'] = 1
+                    app.storage.user['state']['choix'] = {}
+                    app.storage.user['state']['code_metier_affiche'] = ""
+                    build_ui.refresh()
+                ui.button(txt['home'], on_click=go_home) \
                     .props('flat icon=home size=sm') \
                     .classes('text-blue-500 font-bold p-0')
 
@@ -150,9 +139,7 @@ def build_ui():
                     {"c": "art_ef", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair"},
                     {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
                 ]
-
                 ui.label(txt['step1_title']).classes('text-xl font-bold text-slate-800 w-full mb-2 px-2')
-                
                 with ui.element('div').classes('grid-container w-full'):
                     for m in METIERS_DATA:
                         label_affiche = m['fr'] if state['lang'] == 'FR' else m['en']
@@ -161,7 +148,6 @@ def build_ui():
                             with ui.column().classes('items-center justify-center w-full gap-2'):
                                 ui.html(f'<i class="fa-solid {m["icon"]} text-3xl text-black"></i>')
                                 ui.label(label_affiche).classes('text-[11px] font-bold text-center text-slate-800 uppercase leading-tight')
-                
                 ui.separator().classes('my-4 w-11/12')
                 ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
                     .classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold animate-entrance shadow-lg')
@@ -170,14 +156,9 @@ def build_ui():
         elif state['step'] == 'LISTE_ANNEXES':
             ui.label(txt['annexes_btn']).classes('text-xl font-bold mb-1')
             ui.label('Documents au 31/12/2024').classes('text-xs text-red-600 font-bold mb-4 italic uppercase border-l-2 border-red-600 px-2')
-            
-            conn = sqlite3.connect('CCN_3239.db')
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+            conn = sqlite3.connect('CCN_3239.db'); conn.row_factory = sqlite3.Row; cursor = conn.cursor()
             cursor.execute("SELECT numero, titre FROM annexes ORDER BY CAST(numero AS INTEGER)")
-            rows = cursor.fetchall()
-            conn.close()
-            
+            rows = cursor.fetchall(); conn.close()
             with ui.element('div').classes('grid-container w-full'):
                 for row in rows:
                     n, t = row['numero'], row['titre']
@@ -188,18 +169,14 @@ def build_ui():
                             ui.label(t.upper()).classes('text-[10px] font-bold leading-tight text-slate-700 uppercase')
 
         elif state['step'] == 'VOIR_ANNEXE':
-            conn = sqlite3.connect('CCN_3239.db')
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+            conn = sqlite3.connect('CCN_3239.db'); conn.row_factory = sqlite3.Row; cursor = conn.cursor()
             cursor.execute("SELECT titre, resume_fr, resume_en, numero FROM annexes WHERE numero = ?", (state['annexe_selectionnee'],))
-            res = cursor.fetchone()
-            conn.close()
+            res = cursor.fetchone(); conn.close()
             if res:
                 resume = res['resume_fr'] if state['lang'] == 'FR' else res['resume_en']
                 ui.label(res['titre']).classes('text-xl font-black text-blue-900 mb-4 px-2')
                 with ui.card().classes('w-full p-6 bg-white border-t-4 border-blue-900 shadow-md rounded-2xl'):
                     ui.markdown(resume if resume else "Résumé à venir...")
-                
                 pdf_url = f"/static/Annexe_{res['numero']}.pdf"
                 with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl mt-6 items-center'):
                     ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
@@ -232,11 +209,9 @@ def build_ui():
         elif state['step'] == 5:
             col_q = "question_claire" if state['lang'] == 'FR' else "question_en"
             col_th = "theme" if state['lang'] == 'FR' else "theme_en"
-            conn = db.get_connection()
-            cursor = conn.cursor()
+            conn = db.get_connection(); cursor = conn.cursor()
             cursor.execute(f"SELECT id, {col_q} FROM questions WHERE {col_th} = ? AND {col_filtre} != ''", (state['choix']['theme'],))
-            questions = cursor.fetchall()
-            conn.close()
+            questions = cursor.fetchall(); conn.close()
             for q in questions:
                 ui.button(q[1], on_click=lambda q_id=q[0]: set_step(6, {'id_question': q_id})).classes('w-full h-auto py-4 bg-white text-black border-2 border-slate-200 rounded-xl px-4 text-left mb-3 font-medium')
             ui.button(txt['back'], on_click=lambda: set_step(4)).props('flat').classes('w-full mt-4')
@@ -254,26 +229,22 @@ def build_ui():
 
 @ui.page('/')
 def main_page():
-    # Initialisation / Reset du state utilisateur à chaque arrivée sur la page
+    # Initialisation ou Reset à l'accueil lors de l'accès à l'URL racine
     if 'state' not in app.storage.user:
         app.storage.user['state'] = {
-            'step': 1,
-            'lang': 'FR',
-            'choix': {},
-            'code_metier_affiche': "",
-            'art_cible': "",
-            'annexe_selectionnee': None
+            'step': 1, 'lang': 'FR', 'choix': {}, 
+            'code_metier_affiche': "", 'art_cible': "", 'annexe_selectionnee': None
         }
     else:
-        # On force le retour au menu principal à chaque nouvelle connexion/refresh
+        # Bug 2 : On force le retour à l'accueil
         app.storage.user['state']['step'] = 1
         app.storage.user['state']['choix'] = {}
+        app.storage.user['state']['code_metier_affiche'] = ""
 
     global header_area, content_area
     header_area = ui.column().classes('w-full sticky-header')
     content_area = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
     build_ui()
 
-# Lancement de l'application
-# Note : storage_secret est indispensable pour app.storage.user
-ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False, storage_secret='CCN3239_PRIVATE_KEY')
+# Secret key indispensable pour activer app.storage.user
+ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False, storage_secret='MA_CLE_SEC_3239')
