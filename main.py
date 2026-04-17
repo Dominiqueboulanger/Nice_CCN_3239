@@ -138,9 +138,20 @@ def build_ui():
         elif state['step'] == 'LISTE_ANNEXES':
             ui.label(txt['annexes_btn']).classes('text-xl font-bold mb-1')
             ui.label('Documents au 31/12/2024').classes('text-xs text-red-600 font-bold mb-4 italic uppercase border-l-2 border-red-600 px-2')
-            conn = sqlite3.connect('CCN_3239.db'); conn.row_factory = sqlite3.Row; cursor = conn.cursor()
-            cursor.execute("SELECT numero, titre FROM annexes ORDER BY CAST(numero AS INTEGER)")
-            rows = cursor.fetchall(); conn.close()
+            
+            # Connexion corrigée : la virgule est APRES le guillemet
+            conn = sqlite3.connect('CCN_3239.db', timeout=20)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            try:
+                cursor.execute("SELECT numero, titre FROM annexes ORDER BY CAST(numero AS INTEGER)")
+                rows = cursor.fetchall()
+            except sqlite3.OperationalError:
+                rows = []  # Évite le crash si la table n'existe pas encore
+            finally:
+                conn.close()
+
             with ui.element('div').classes('grid-container w-full'):
                 for row in rows:
                     n, t = row['numero'], row['titre']
