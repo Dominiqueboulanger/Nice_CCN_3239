@@ -224,4 +224,5 @@ def main_page():
     build_ui(user_state, h_zone, c_zone)
 
 # --- LANCEMENT SERVEUR ---
-ui.run(title="Guide CCN", host='0.0.0.0', port=9000, reload=False)
+# Modification recommandée
+ui.run(title="Guide CCN", host='0.0.0.0', port=int(os.environ.get("PORT", 9000)), reload=False)
