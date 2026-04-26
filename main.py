@@ -4,7 +4,7 @@ import css
 import os
 import sqlite3
 
-# --- CONFIGURATION FICHIERS STATIQUES ---
+ # --- CONFIGURATION FICHIERS STATIQUES ---
 app.add_static_files('/static', 'static')
 
 # --- CLASSE D'ÉTAT (UNE PAR UTILISATEUR) ---
@@ -84,41 +84,65 @@ def build_ui(state, h_zone, c_zone):
                 ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-xl p-0')
 
     with c_zone:
+        # --- BOUTON ACCUEIL (S'affiche sur toutes les pages sauf l'accueil) ---
         if state.step != 1:
-            with ui.row().classes('w-full justify-start mb-0'):
-                ui.button(txt['home'], on_click=lambda: (state.__init__(), build_ui.refresh())) \
-                    .props('flat icon=home size=sm').classes('text-blue-500 font-bold p-0')
-
-        if state.step not in ['DIRECT', 6, 'LISTE_ANNEXES', 'VOIR_ANNEXE']:
-            with ui.expansion(txt['search_label']).classes('w-full border-2 rounded-2xl mb-2 bg-white'):
-                with ui.row().classes('w-full items-center p-3'):
-                    s_input = ui.input(placeholder="Ex: 139").classes('flex-grow')
-                    ui.button(txt['search_btn'], on_click=lambda: set_step('DIRECT', {'art_cible': s_input.value})).props('flat').classes('font-bold')
-
+            ui.button(txt['home'], on_click=lambda: set_step(1)) \
+                .props('flat dense icon=home color=primary') \
+                .classes('w-full mb-4 text-slate-500 border-b pb-2')
         # --- ÉTAPE 1 : ACCUEIL ---
         if state.step == 1:
-            with ui.column().classes('w-full items-center zoom-page'):
+            with ui.dialog() as direct_dialog, ui.card().classes('items-center'):
+                ui.label(txt['search_label']).classes('font-bold')
+                i_direct = ui.input(placeholder="Ex: 139").classes('w-full')
+                with ui.row():
+                    ui.button(txt['search_btn'], on_click=lambda: (set_step('DIRECT', {'art_cible': i_direct.value}), direct_dialog.close()))
+                    ui.button('Fermer', on_click=direct_dialog.close).props('flat')
+
+            with ui.column().classes('w-full items-center'):
                 METIERS_DATA = [
                     {"c": "art_am", "fr": "Assistant Maternel", "en": "Childminder", "icon": "fa-baby-carriage"},
                     {"c": "art_ef", "fr": "Assistant Parental", "en": "Nanny", "icon": "fa-baby"},
                     {"c": "art_ef", "fr": "Employé Familial", "en": "Family Employee", "icon": "fa-house-user"},
                     {"c": "art_ef", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair"},
-                    {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"}
+                    {"c": "art_sc", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"},
+                    {"c": "DIRECT", "fr": "Article CCN 3239 en 1 clic", "en": "Direct Access", "icon": "fa-book-open", "is_direct": True}
                 ]
+                
                 ui.label(txt['step1_title']).classes('text-xl font-bold text-slate-800 w-full mb-2 px-2')
+                
                 with ui.element('div').classes('grid-container w-full'):
                     for m in METIERS_DATA:
                         label_affiche = m['fr'] if state.lang == 'FR' else m['en']
-                        with ui.card().classes('w-full bg-white cursor-pointer p-4 transition-all') \
-                            .on('click', lambda m=m, l=label_affiche: set_step(2, {'colonne_metier': m['c'], 'label_metier': l})):
-                            with ui.column().classes('items-center justify-center w-full gap-2'):
-                                ui.html(f'<i class="fa-solid {m["icon"]} text-3xl text-black"></i>')
-                                ui.label(label_affiche).classes('text-[11px] font-bold text-center text-slate-800 uppercase leading-tight')
-                ui.separator().classes('my-4 w-11/12')
-                ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
-                    .classes('w-full py-4 bg-slate-800 text-white rounded-2xl font-bold animate-entrance shadow-lg')
+                        is_special = m.get('is_direct', False)
+                        border_color = 'border-[#10b981]' if is_special else 'border-slate-200'
+                        
+                        if is_special:
+                            on_click_action = direct_dialog.open
+                        else:
+                            # Utilisation d'une fonction nommée pour éviter les problèmes de capture de variable
+                            def create_click(m_code=m['c'], m_label=label_affiche):
+                                return lambda: set_step(2, {'colonne_metier': m_code, 'label_metier': m_label})
+                            on_click_action = create_click()
 
-        # --- ÉTAPE 2 : GESTION / FIN ---
+                        # LA CARTE : On ajoute 'native' et on gère le clic proprement
+                        card = ui.card().classes(f'w-full bg-white p-4 border-2 {border_color} shadow-sm cursor-pointer active:opacity-50')
+                        card.on('click', on_click_action) # Événement standard
+                        
+                        with card:
+                            # pointer-events-none est INDISPENSABLE ici pour que le clic touche la carte
+                            with ui.column().classes('items-center justify-center w-full gap-1 pointer-events-none'):
+                                if not is_special:
+                                    ui.html(f'<i class="fa-solid {m["icon"]} text-black"></i>')
+                                    ui.label(label_affiche).classes('font-bold text-center text-slate-800 uppercase leading-tight')
+                                else:
+                                    ui.html(f'<i class="fa-solid {m["icon"]} text-[#10b981]"></i>')
+                                    ui.label("ARTICLE CCN\n3239\nEN 1 CLIC").classes('special-label text-center text-slate-800 leading-tight').style('white-space: pre-line;')
+                
+                 # Ajout du bouton ANNEXES qui avait disparu ou s'était décalé
+                ui.separator().classes('my-2 w-11/12')
+                ui.button(txt['annexes_btn'], on_click=lambda: set_step('LISTE_ANNEXES')) \
+                    .classes('w-full py-4 animate-entrance shadow-lg text-sm rounded-2xl') 
+    # --- ÉTAPE 2 : GESTION / FIN ---
         elif state.step == 2:
             ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-2 px-2')
             f = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
@@ -192,38 +216,61 @@ def build_ui(state, h_zone, c_zone):
             conn.row_factory = sqlite3.Row
             res = conn.execute("SELECT titre, resume_fr, resume_en, numero FROM annexes WHERE numero = ?", (state.annexe_selectionnee,)).fetchone()
             conn.close()
+            
             if res:
                 resume = res['resume_fr'] if state.lang == 'FR' else res['resume_en']
-                ui.label(res['titre']).classes('text-xl font-black text-blue-900 mb-4 px-2')
-                with ui.card().classes('w-full p-6 bg-white border-t-4 border-blue-900 shadow-md rounded-2xl'):
-                    ui.markdown(resume if resume else "Résumé à venir...")
-                pdf_url = f"/static/Annexe_{res['numero']}.pdf"
-                with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl mt-6 items-center'):
-                    ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
-                    ui.button(icon='download', on_click=lambda: ui.download(pdf_url)).props('round flat color=red-900')
-            ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat').classes('w-full mt-4')
+                
+                # On utilise la nouvelle structure "annexe-container"
+                with ui.column().classes('annexe-container'):
+                    
+                    # 1. Titre et Numéro (Bien séparés)
+                    with ui.element('div').classes('annexe-title-section'):
+                        ui.label(f"ANNEXE N°{res['numero']}").classes('text-blue-600 font-bold uppercase text-xs tracking-widest')
+                        ui.label(res['titre']).classes('text-2xl font-black text-slate-800 leading-tight')
 
-# --- POINT D'ENTRÉE DE L'APPLICATION ---
+                    # 2. Le Résumé (Dans sa propre carte propre)
+                    with ui.element('div').classes('annexe-card-info'):
+                        ui.markdown(resume if resume else "Résumé à venir...").classes('text-slate-700 leading-relaxed')
+
+                    # 3. Zone Téléchargement (Espacée)
+                    with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl items-center mt-4'):
+                        ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
+                        pdf_url = f"/static/Annexe_{res['numero']}.pdf"
+                        ui.button("TÉLÉCHARGER LE PDF", icon='download', on_click=lambda: ui.download(pdf_url)) \
+                            .props('elevated color=red-800').classes('rounded-full')
+
+                    # 4. Bouton Retour
+                    ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')) \
+                        .props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
+
 @ui.page('/')
 def main_page():
-    # Injection Head (CSS et Meta)
+    # 1. On remet FontAwesome et on garde le viewport
     ui.add_head_html(f'''
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>{css.STYLE_CSS}</style>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>{css.STYLE_CSS}</style>
     ''')
-    
-    # Création d'un état unique pour CETTE session
+
+    # 2. On évite la colonne parente "w-full items-center" qui englobe tout
+    # On crée l'état et les zones directement
     user_state = AppState()
     
-    # Création des zones UI uniques pour CETTE session
+    # On garde les zones séparées comme dans la version qui marchait
     h_zone = ui.column().classes('w-full sticky-header')
     c_zone = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
     
     # Lancement de l'interface
     build_ui(user_state, h_zone, c_zone)
-
+        
 # --- LANCEMENT SERVEUR ---
 # Modification recommandée
-ui.run(title="Guide CCN", host='0.0.0.0', port=int(os.environ.get("PORT", 9000)), reload=False)
-
+ui.run(
+    title="Guide CCN", 
+    host='0.0.0.0', 
+    port=int(os.environ.get("PORT", 9000)), 
+    reload=False,
+    # Ces deux paramètres aident à stabiliser la connexion derrière un proxy
+    uvicorn_logging_level='info',
+    show=False 
+)
