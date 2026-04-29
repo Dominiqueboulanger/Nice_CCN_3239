@@ -10,7 +10,7 @@ app.add_static_files('/static', 'static')
 # --- CLASSE D'ÉTAT (UNE PAR UTILISATEUR) ---
 class AppState:
     def __init__(self):
-        self.step = 1
+        self.step = 0
         self.lang = 'FR'
         self.choix = {}
         self.code_metier_affiche = ""
@@ -76,22 +76,45 @@ def build_ui(state, h_zone, c_zone):
     txt = UI_TEXT[state.lang]
 
     with h_zone:
-        with ui.row().classes('w-full px-4 py-3 header-row'):
-            ui.label(state.code_metier_affiche if state.code_metier_affiche else 'CCN 3239') \
-                .classes('text-blue-600 font-black text-base truncate flex-shrink')
-            with ui.row().classes('gap-3 flex-nowrap items-center flex-none'):
-                ui.button('🇫🇷', on_click=lambda: (setattr(state, 'lang', 'FR'), build_ui.refresh())).props('flat').classes('text-xl p-0')
-                ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-xl p-0')
+        if state.step != 0:
+            with ui.row().classes('w-full px-4 py-3 header-row'):
+                ui.label(state.code_metier_affiche if state.code_metier_affiche else 'CCN 3239') \
+                    .classes('text-blue-600 font-black text-base truncate flex-shrink')
+                with ui.row().classes('gap-3 flex-nowrap items-center flex-none'):
+                    ui.button('🇫🇷', on_click=lambda: (setattr(state, 'lang', 'FR'), build_ui.refresh())).props('flat').classes('text-xl p-0')
+                    ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-xl p-0')
 
     with c_zone:
-        # --- BOUTON ACCUEIL (S'affiche sur toutes les pages sauf l'accueil) ---
-        if state.step != 1:
+
+     
+        # --- ÉTAPE 0 : SPLASH SCREEN ---
+        if state.step == 0:
+            # On remonte encore plus (-mt-95) pour coller au sommet
+            # On utilise h-screen pour occuper tout l'espace disponible
+            with ui.column().classes('w-full items-center justify-start no-wrap h-screen -mt-[95px] p-0 bg-white'):
+                
+                # Le bouton occupe désormais 85% de la hauteur de l'écran (85vh)
+                # Cela permet de voir tout le bas de ton image
+                with ui.button(on_click=lambda: set_step(1)).props('flat') \
+                    .classes('p-0 m-0 rounded-b-3xl overflow-hidden shadow-xl w-full max-w-[420px] h-[85vh]'):
+                    
+                    # object-top : Toujours prioriser le haut de l'image
+                    ui.image('/static/accueil.jpg').classes('w-full h-full object-cover object-top')
+            return
+
+
+     
+        # --- BOUTON ACCUEIL (Position correcte : au-dessus des étapes) ---
+        if state.step not in [0, 1]:
             ui.button(txt['home'], on_click=lambda: set_step(1)) \
                 .props('flat dense icon=home color=primary') \
                 .classes('w-full mb-4 text-slate-500 border-b pb-2')
+
         # --- ÉTAPE 1 : ACCUEIL ---
         if state.step == 1:
             with ui.dialog() as direct_dialog, ui.card().classes('items-center'):
+                # ... la suite de ton code (ui.label(txt['search_label']), etc.)
+           
                 ui.label(txt['search_label']).classes('font-bold')
                 i_direct = ui.input(placeholder="Ex: 139").classes('w-full')
                 with ui.row():
@@ -258,7 +281,7 @@ def main_page():
     
     # On garde les zones séparées comme dans la version qui marchait
     h_zone = ui.column().classes('w-full sticky-header')
-    c_zone = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center')
+    c_zone = ui.column().classes('w-full max-w-md mx-auto p-4 gap-2 items-center mt-[44px]')
     
     # Lancement de l'interface
     build_ui(user_state, h_zone, c_zone)
@@ -270,7 +293,7 @@ ui.run(
     host='0.0.0.0', 
     port=int(os.environ.get("PORT", 9000)), 
     reload=False,
-    # Ces deux paramètres aident à stabiliser la connexion derrière un proxy
-    uvicorn_logging_level='info',
+    # Augmente la tolérance aux coupures réseau
+    reconnect_timeout=30,
     show=False 
 )
