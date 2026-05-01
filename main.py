@@ -400,6 +400,8 @@ ui.run(
     title="Guide CCN",
     host='0.0.0.0',
     port=int(os.environ.get("PORT", 9000)),
+    # storage_secret permet de mieux gérer les sessions sécurisées
+    storage_secret='une_cle_secrete_au_choix', 
     reload=False,
     reconnect_timeout=30,
     show=False
