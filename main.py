@@ -35,19 +35,10 @@ class AppState:
 # 3. FONCTION render_result : AFFICHAGE D'UN ARTICLE
 # =============================================
 
-import re
-
 def render_result(num_article, txt, current_state):
     if not num_article or num_article == "None":
         ui.label("⚠️ Article non renseigné").classes('text-orange-500 p-4 bg-orange-50 rounded-xl w-full')
         return
-
-    container_lies = ui.column().classes('w-full mt-4')
-
-    def charger_article_cité(n_art):
-        with container_lies:
-            ui.separator().classes('my-4 border-dashed border-blue-300')
-            render_result(n_art, txt, current_state)
 
     articles = db.fetch_articles_complet(num_article)
     ui.label(f"Article {num_article}").classes('text-xl font-bold text-blue-700 w-full mb-4')
@@ -64,24 +55,24 @@ def render_result(num_article, txt, current_state):
             with ui.expansion(txt.get('official', '⚖️ Texte officiel')).classes('w-full text-sm text-slate-500 border-t mt-4'):
                 ui.markdown(art['texte_integral']).classes('text-[12px] italic')
                 
-                # --- NOUVELLE LOGIQUE DE DÉTECTION PRÉCISE ---
-                # On cherche "article" précédé optionnellement de l' ou l’
-                # \b assure qu'on ne prend pas un mot contenant "article" au milieu
-                # \s+ gère un ou plusieurs espaces
                 regex_article = r"(?:l['’])?article\s+(\d+)"
                 matches = re.findall(regex_article, art['texte_integral'], re.IGNORECASE)
                 
                 if matches:
-                    # On retire les doublons et le numéro de l'article actuel
                     articles_cites = list(set([m for m in matches if str(m) != str(num_article)]))
-                    
                     for num_cite in articles_cites:
                         ui.button(f"📄 Consulter l'article {num_cite} cité", 
                                   on_click=lambda n=num_cite: charger_article_cité(n)) \
                             .props('flat color=primary icon=launch') \
                             .classes('mt-4 font-bold bg-blue-50 w-full text-left')
 
-    container_lies.move(ui.get_context().parent)
+    # On place le conteneur pour les articles liés APRÈS l'article principal
+    container_lies = ui.column().classes('w-full mt-4')
+
+    def charger_article_cité(n_art):
+        with container_lies:
+            ui.separator().classes('my-4 border-dashed border-blue-300')
+            render_result(n_art, txt, current_state)
     
 # =============================================
 # 4. FONCTION build_ui : MOTEUR PRINCIPAL DE L'INTERFACE
