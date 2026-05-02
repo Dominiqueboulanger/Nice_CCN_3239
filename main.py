@@ -362,13 +362,28 @@ def build_ui(state, h_zone, c_zone):
 # =============================================
 # 5. PAGE PRINCIPALE : / (POINT D'ENTRÉE DE L'APPLICATION)
 # =============================================
+
 @ui.page('/')
 def main_page():
     # Ajoute les balises HTML pour le viewport, FontAwesome et le CSS personnalisé
+    # Ajout d'un script de "Auto-Reload" pour smartphone en cas de perte de connexion
     ui.add_head_html(f'''
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>{css.STYLE_CSS}</style>
+        
+        <script>
+        // Détecte quand l'utilisateur revient sur l'onglet/l'appli
+        document.addEventListener('visibilitychange', function() {{
+            if (document.visibilityState === 'visible') {{
+                // Si la connexion NiceGUI est perdue ou instable, on force le reload
+                // Cela évite de devoir cliquer 10 fois pour réveiller le serveur
+                if (!window.socket || !window.socket.connected) {{
+                    window.location.reload();
+                }}
+            }}
+        }});
+        </script>
     ''')
 
     # Initialise l'état utilisateur et les zones d'interface
