@@ -410,6 +410,6 @@ ui.run(
     reload=False,
     # REGLAGES SPECIFIQUES MOBILE :
     reconnect_timeout=3.0,  # Très court pour ne pas laisser l'appli "figée"
-    tail=True,              # Aide à la gestion des logs en temps réel
+    
     show=False
 )
