@@ -1,2 +1,0 @@
-nicegui==1.4.23
-uvicorn==0.29.0
