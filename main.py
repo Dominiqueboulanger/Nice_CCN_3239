@@ -219,8 +219,8 @@ def build_ui(state, h_zone, c_zone):
                 {"c": "art_ef", "fr": "Employé Familial", "en": "Family Employee", "icon": "fa-house-user"},
                 {"c": "art_av", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair"},
                 {"c": "art_cesu", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"},
-                {"c": "DIRECT", "fr": "RECHERCHE DIRECTE", "en": "DIRECT SEARCH", "icon": "fa-magnifying-glass", "is_special": True},
-                {"c": "LISTE_ANNEXES", "fr": "ANNEXES PDF", "en": "PDF ANNEXES", "icon": "fa-file-pdf", "is_special": True},
+                {"c": "DIRECT", "fr": "ACCÈS DIRECT À UN ARTICLE", "en": "DIRECT SEARCH", "icon": "fa-magnifying-glass", "is_special": True},
+                {"c": "LISTE_ANNEXES", "fr": "ANNEXES + AVENANTS 2026 PDF", "en": "PDF ANNEXES + AMENDMENTS 2026", "icon": "fa-file-pdf", "is_special": True},
                 {"c": "JEUX", "fr": "TESTEZ VOS CONNAISSANCES", "en": "TEST YOUR KNOWLEDGE", "icon": "fa-gamepad", "is_special": True}
             ]
 
@@ -234,6 +234,9 @@ def build_ui(state, h_zone, c_zone):
                     if m['c'] == "DIRECT": 
                         on_click_action = lambda: direct_dialog.open()
                         st = 'border: 2px solid #10b981 !important;'
+                    elif m['c'] == "JEUX":
+                        on_click_action = lambda c=m['c']: set_step(c)
+                        st = 'border: 2px solid #ef4444 !important;'  # Rouge (Tailwind red-500)
                     elif is_special: 
                         on_click_action = lambda c=m['c']: set_step(c)
                         st = 'border: 2px solid #3b82f6 !important;'
