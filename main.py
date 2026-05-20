@@ -16,7 +16,22 @@ except:
 
 # --- 2. CONFIGURATION DES RESSOURCES ---
 app.add_static_files('/static', 'static')
-
+# 👇 AJOUTEZ CE BLOC ICI POUR SUPPRIMER LES CACHES AGRESSIFS DE SAFARI / IPHONE
+@app.middleware
+async def add_cache_control_headers(request, call_next):
+    response = await call_next(request)
+    
+    # Si la requête concerne la page d'accueil ou du code HTML
+    if request.url.path == "/" or "text/html" in response.headers.get("content-type", ""):
+        # Dit au navigateur de retélécharger la page si elle a changé
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        
+        # Déclenche l'option technique que nous avons activée sur votre iPhone (Clear-Site-Data)
+        response.headers["Clear-Site-Data"] = '"cache", "storage"'
+        
+    return response
 # --- 3. GESTION DE L'ÉTAT UTILISATEUR ---
 class AppState:
     def __init__(self):
