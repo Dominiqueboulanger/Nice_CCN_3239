@@ -7,6 +7,7 @@ import sqlite3
 import game_definitions
 import game_translation
 
+
 import os
 try:
     os.system("lsof -t -i:9000 | xargs kill -9 > /dev/null 2>&1")
@@ -25,6 +26,7 @@ class AppState:
         self.code_metier_affiche = ""
         self.art_cible = ""
         self.annexe_selectionnee = None
+        self.annexes_cache = None          # <-- NOUVEAU : Cache pour éviter de bloquer le HUB au démarrage
         
 ## --- 4. COMPOSANTS D'AFFICHAGE RÉUTILISABLES ---
 
@@ -120,6 +122,7 @@ def render_result(num_article, txt, current_state, set_step_func):
 def build_ui(state, h_zone, c_zone):
     h_zone.clear()
     c_zone.clear()
+    c_zone.style('margin-top: 44px;' if state.step != 0 else 'margin-top: 0px;')
     
     def set_step(s, data=None):
         state.step = s
@@ -170,26 +173,51 @@ def build_ui(state, h_zone, c_zone):
     # --- 6. CONSTRUCTION DE L'ENTÊTE (H_ZONE) ---
     with h_zone:
         if state.step != 0:
-            # Réduction du py-3 à py-1 pour écraser la hauteur du header
+            h_zone.set_visibility(True)  # On l'affiche sur les autres étapes
             with ui.row().classes('w-full px-4 py-1 header-row items-center'):
                 ui.label(state.code_metier_affiche if state.code_metier_affiche else 'CCN 3239') \
                     .classes('text-blue-600 font-black text-base truncate flex-shrink')
                 with ui.row().classes('gap-2 flex-nowrap items-center flex-none'):
                     ui.button('🇫🇷', on_click=lambda: (setattr(state, 'lang', 'FR'), build_ui.refresh())).props('flat').classes('text-xl p-0')
                     ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-xl p-0')
-
+        else:
+            h_zone.set_visibility(False)  # On le masque TOTALEMENT à l'étape 0
+            
     # --- 7. CONSTRUCTION DU CONTENU DYNAMIQUE (C_ZONE) ---
     with c_zone:
         # La suite de ton code...
         if state.step == 0:
-            with ui.column().classes('w-full items-center justify-start no-wrap h-screen -mt-[95px] p-0 bg-white'):
+            # Masquer totalement le header à l'étape 0 pour éviter la bande blanche
+            h_zone.set_visibility(False)
+            
+            with ui.column().classes('w-full items-center justify-start no-wrap h-screen p-0 bg-[#b91c1c] relative'):
                 def start_app():
                     state.step = 1
                     build_ui.refresh()
 
+                # Conteneur cliquable en plein écran
                 with ui.button(on_click=start_app).props('flat') \
-                    .classes('p-0 m-0 rounded-b-3xl overflow-hidden shadow-xl w-full max-w-[420px] h-[85vh]'):
-                    ui.image('/static/accueil.jpg').classes('w-full h-full object-cover object-top')
+                    .classes('p-0 m-0 rounded-none overflow-hidden shadow-none w-full h-full relative'):
+                    
+                    # 1. Votre image rouge d'origine (sans texte incrusté)
+                    ui.image('/static/accueil.jpg').classes('w-full h-full') \
+                        .style('object-fit: contain !important; background-color: #b91c1c;')
+                    
+                    # 2. L'accroche sur 3 lignes incrustée informatiquement au premier plan
+                    with ui.column().classes('absolute top-[6vh] left-0 right-0 items-center justify-center px-4 pointer-events-none'):
+                        if state.lang == 'FR':
+                            accroche = """
+                            <div style='color: #ffffff; font-weight: 900; font-size: 26px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>CONTRAT DE TRAVAIL S.P.E :</div>
+                            <div style='color: #ffffff; font-weight: 500; font-size: 24px; margin-top: 4px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>suivez le fil</div>
+                            <div style='color: #ffffff; font-weight: 500; font-size: 24px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>selon votre profil.</div>
+                            """
+                        else:
+                            accroche = """
+                            <div style='color: #ffffff; font-weight: 900; font-size: 26px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>S.P.E EMPLOYMENT CONTRACT:</div>
+                            <div style='color: #ffffff; font-weight: 500; font-size: 24px; margin-top: 4px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>follow the guide</div>
+                            <div style='color: #ffffff; font-weight: 500; font-size: 24px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>according to your profile.</div>
+                            """
+                        ui.html(accroche).classes('text-center uppercase tracking-wide')
             return
 
         if state.step not in [0, 1]:
@@ -397,7 +425,7 @@ def main_page():
     # On passe p-4 -> p-0, gap-2 -> gap-0 et mt-[44px] -> mt-0
     # On remet mt-[44px] pour que le contenu s'affiche SOUS le header bleu
     # On garde mt-[44px] pour être SOUS le header, mais on s'assure que tout est collé
-    c_zone = ui.column().classes('w-full max-w-md mx-auto p-0 gap-0 items-center mt-[44px]')
+    c_zone = ui.column().classes('w-full max-w-md mx-auto p-0 gap-0 items-center')
     
     build_ui(user_state, h_zone, c_zone)
         
