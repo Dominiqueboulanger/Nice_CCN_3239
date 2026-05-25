@@ -160,6 +160,33 @@ def build_ui(state, h_zone, c_zone):
             
             if 'art_cible' in data: state.art_cible = data['art_cible']
             if 'annexe_id' in data: state.annexe_selectionnee = data['annexe_id']
+    def set_step(s, data=None):
+        """Mise à jour sélective de l'état applicatif et routage des alias métiers"""
+        state.step = s
+        if data: 
+            if 'colonne_metier' in data:
+                m = data['colonne_metier']
+                if m in ["art_ap", "art_av"]: data['colonne_metier'] = "art_ef"
+                elif m == "art_cesu": data['colonne_metier'] = "art_sc"
+            
+            state.choix.update(data)
+            
+            if 'colonne_metier' in data:
+                mapping = {
+                    "art_am": "Socle Assistant Maternel",
+                    "art_sc": "Socle Commun",
+                    "art_ef": "Salarié Particulier Employeur"
+                }
+                state.code_metier_affiche = mapping.get(data['colonne_metier'], "CCN 3239")
+            
+            if 'art_cible' in data: state.art_cible = data['art_cible']
+            if 'annexe_id' in data: state.annexe_selectionnee = data['annexe_id']
+
+        # --- AJOUT ICI : Envoi automatique du clic d'écran à Google Analytics ---
+        try:
+            ui.run_javascript(f"gtag('event', 'screen_view', {{'screen_name': 'Ecran_{s}'}});")
+        except Exception:
+            pass
         
         build_ui.refresh()
 
@@ -421,7 +448,19 @@ def build_ui(state, h_zone, c_zone):
 # --- 8. INITIALISATION DE LA PAGE PRINCIPALE ---
 @ui.page('/')
 def main_page():
+    # 1. Votre ID de mesure officiel Google Analytics
+    ga_id = "G-7P6Y6B000Z"  
+
+    # 2. Injection du script de suivi complet sans modifier vos balises existantes
     ui.add_head_html(f'''
+        <script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){{dataLayer.push(arguments);}}
+          gtag('js', new Date());
+          gtag('config', '{ga_id}');
+        </script>
+
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>{css.STYLE_CSS}</style>
