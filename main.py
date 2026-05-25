@@ -448,7 +448,7 @@ def build_ui(state, h_zone, c_zone):
 # --- 8. INITIALISATION DE LA PAGE PRINCIPALE ---
 @ui.page('/')
 def main_page():
-    ga_id = "G-NBEFDZDSZ8"  
+    ga_id = "G-71B4Z4QCLZ"  
 
     ui.add_head_html(f'''
         <script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
