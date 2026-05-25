@@ -448,15 +448,22 @@ def build_ui(state, h_zone, c_zone):
 # --- 8. INITIALISATION DE LA PAGE PRINCIPALE ---
 @ui.page('/')
 def main_page():
-    # 1. Votre ID de mesure officiel Google Analytics
     ga_id = "G-7P6Y6B000Z"  
 
-    # 2. Injection du script de suivi complet sans modifier vos balises existantes
     ui.add_head_html(f'''
         <script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
         <script>
           window.dataLayer = window.dataLayer || [];
           function gtag(){{dataLayer.push(arguments);}}
+          
+          // 👇 NOUVEAU : Configuration du consentement RGPD par défaut
+          gtag('consent', 'default', {{
+            'ad_storage': 'denied',
+            'ad_user_data': 'denied',
+            'ad_personalization': 'denied',
+            'analytics_storage': 'granted' // Autorise le suivi statistique anonyme
+          }});
+          
           gtag('js', new Date());
           gtag('config', '{ga_id}');
         </script>
@@ -476,13 +483,9 @@ def main_page():
     h_zone = ui.column().classes('w-full sticky-header')
     
     # Zone de contenu CORRIGÉE :
-    # On passe p-4 -> p-0, gap-2 -> gap-0 et mt-[44px] -> mt-0
-    # On remet mt-[44px] pour que le contenu s'affiche SOUS le header bleu
-    # On garde mt-[44px] pour être SOUS le header, mais on s'assure que tout est collé
     c_zone = ui.column().classes('w-full max-w-md mx-auto p-0 gap-0 items-center')
     
     build_ui(user_state, h_zone, c_zone)
-        
 # --- 9. CONFIGURATION ET LANCEMENT SERVEUR ---
 ui.run(
     title="Guide CCN", 
