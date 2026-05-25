@@ -448,20 +448,22 @@ def build_ui(state, h_zone, c_zone):
 # --- 8. INITIALISATION DE LA PAGE PRINCIPALE ---
 @ui.page('/')
 def main_page():
+    # 1. Votre NOUVEL ID de mesure officiel et définitif
     ga_id = "G-71B4Z4QCLZ"  
 
+    # 2. Injection du script conforme (sans pop-up utilisateur)
     ui.add_head_html(f'''
         <script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
         <script>
           window.dataLayer = window.dataLayer || [];
           function gtag(){{dataLayer.push(arguments);}}
           
-          // 👇 NOUVEAU : Configuration du consentement RGPD par défaut
+          // Configuration du consentement invisible pour l'Europe (Corrigé)
           gtag('consent', 'default', {{
             'ad_storage': 'denied',
             'ad_user_data': 'denied',
             'ad_personalization': 'denied',
-            'analytics_storage': 'granted' // Autorise le suivi statistique anonyme
+            'analytics_storage': 'granted'
           }});
           
           gtag('js', new Date());
@@ -482,7 +484,7 @@ def main_page():
     # Zone d'en-tête
     h_zone = ui.column().classes('w-full sticky-header')
     
-    # Zone de contenu CORRIGÉE :
+    # Zone de contenu
     c_zone = ui.column().classes('w-full max-w-md mx-auto p-0 gap-0 items-center')
     
     build_ui(user_state, h_zone, c_zone)
