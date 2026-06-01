@@ -427,7 +427,7 @@ def build_ui(state, h_zone, c_zone):
                 ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
 
         elif state.step == 'JEUX':
-            ui.label(txt['game_btn']).classes('text-xl font-bold mb-12 text-slate-800 w-full text-center')
+            ui.label(txt['game_btn']).classes('text-xl font-bold mb-18 text-slate-800 w-full text-center')
             ui.space().classes('h-4')  # <-- Crée un bloc de séparation invisible de la hauteur de votre choix (h-4, h-6, etc.)
             with ui.column().classes('w-full gap-4'):
                 ui.button('LEXIQUE ↔ DÉFINITIONS', on_click=lambda: set_step('GAME_ASSOC')).classes(css.BTN_STYLE)
