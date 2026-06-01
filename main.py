@@ -428,7 +428,8 @@ def build_ui(state, h_zone, c_zone):
 
         elif state.step == 'JEUX':
             ui.label(txt['game_btn']).classes('text-xl font-bold mb-12 text-slate-800 w-full text-center')
-            ui.space().classes('h-8')  # <-- Crée un bloc de séparation invisible de la hauteur de votre choix (h-4, h-6, etc.)
+            ui.space().classes('h-4')  # <-- Crée un bloc de séparation invisible de la hauteur de votre choix (h-4, h-6, etc.)
+            ui.space().classes('h-4') 
             with ui.column().classes('w-full gap-4'):
                 ui.button('LEXIQUE ↔ DÉFINITIONS', on_click=lambda: set_step('GAME_ASSOC')).classes(css.BTN_STYLE)
                 ui.button('GLOSSAIRE FRANÇAIS ↔ ANGLAIS', on_click=lambda: set_step('GAME_TRAD')).classes(css.BTN_STYLE)
