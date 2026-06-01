@@ -429,8 +429,8 @@ def build_ui(state, h_zone, c_zone):
         elif state.step == 'JEUX':
             ui.label(txt['game_btn']).classes('text-xl font-bold mb-6 text-slate-800 w-full text-center')
             with ui.column().classes('w-full gap-4'):
-                ui.button('MOTS ↔ DÉFINITIONS', on_click=lambda: set_step('GAME_ASSOC')).classes(css.BTN_STYLE)
-                ui.button('FRANÇAIS ↔ ANGLAIS', on_click=lambda: set_step('GAME_TRAD')).classes(css.BTN_STYLE)
+                ui.button('LEXIQUE ↔ DÉFINITIONS', on_click=lambda: set_step('GAME_ASSOC')).classes(css.BTN_STYLE)
+                ui.button('GLOSSAIRE FRANÇAIS ↔ ANGLAIS', on_click=lambda: set_step('GAME_TRAD')).classes(css.BTN_STYLE)
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-8')
 
         elif state.step == 'GAME_ASSOC':
