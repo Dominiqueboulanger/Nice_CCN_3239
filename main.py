@@ -17,9 +17,14 @@ except:
 
 # --- 2. CONFIGURATION DES RESSOURCES ---
 app.add_static_files('/static', 'static')
-# 👇 AJOUTEZ CE BLOC ICI POUR SUPPRIMER LES CACHES AGRESSIFS DE SAFARI / IPHONE
+
+# 👇 BLOC CORRIGÉ : SUPPRIME LES CACHES SANS BLOQUER LA LECTURE DES PDF
 @app.middleware
 async def add_cache_control_headers(request, call_next):
+    # SÉCURITÉ : Si la requête demande un fichier dans /static, on la laisse passer directement
+    if request.url.path.startswith("/static"):
+        return await call_next(request)
+        
     response = await call_next(request)
     
     # Si la requête concerne la page d'accueil ou du code HTML
@@ -29,7 +34,7 @@ async def add_cache_control_headers(request, call_next):
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         
-        # Déclenche l'option technique que nous avons activée sur votre iPhone (Clear-Site-Data)
+        # Déclenche l'option de nettoyage pour votre iPhone (Clear-Site-Data)
         response.headers["Clear-Site-Data"] = '"cache", "storage"'
         
     return response
@@ -403,11 +408,17 @@ def build_ui(state, h_zone, c_zone):
                         ui.label(res['titre']).classes('text-2xl font-black text-slate-800 leading-tight')
                     with ui.element('div').classes('annexe-card-info'):
                         ui.markdown(resume if resume else "Résumé à venir...").classes('text-slate-700 leading-relaxed')
+                    
+                    # 👇 BLOC BOUTON SÉCURISÉ POUR LES TÉLÉPHONES MOBILE
                     with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl items-center mt-4'):
                         ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
-                        pdf_url = f"/static/Annexe_{res['numero']}.pdf"
-                        ui.button("CONSULTER LE PDF", icon='visibility', on_click=lambda: ui.navigate.to(pdf_url, new_tab=True)) \
-                            .props('elevated color=red-800').classes('rounded-full')
+                        
+                        # 1. On génère l'URL fixe
+                        cible_pdf = f"/static/Annexe_{res['numero']}.pdf"
+                        
+                        # 2. On utilise un lien HTML natif (Invisible pour le style, mais compris par l'iPhone)
+                        with ui.link(target=cible_pdf, new_tab=False).classes('w-full text-center style="text-decoration: none;"'):
+                            ui.button("CONSULTER LE PDF", icon='visibility').props('elevated color=red-800').classes('rounded-full w-full')
                             
                     ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
 
