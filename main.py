@@ -4,6 +4,7 @@ import sql_manager as db
 import css
 import os
 import sqlite3
+import random  # <-- Il faut s'assurer qu'il est bien ici
 import game_definitions
 import game_translation
 
@@ -228,39 +229,38 @@ def build_ui(state, h_zone, c_zone):
     # --- 7. CONSTRUCTION DU CONTENU DYNAMIQUE (C_ZONE) ---
     with c_zone:
         # La suite de ton code...
+       # --- ÉTAPE 0 : ÉCRAN D'ACCUEIL CORRIGÉ (INTERLIGNES & POSTION IPHONE) ---
         if state.step == 0:
-            # Masquer totalement le header à l'étape 0 pour éviter la bande blanche
             h_zone.set_visibility(False)
             
-            with ui.column().classes('w-full items-center justify-start no-wrap h-screen p-0 bg-[#b91c1c] relative'):
-                def start_app():
-                    state.step = 1
-                    build_ui.refresh()
+            def start_app():
+                state.step = 1
+                build_ui.refresh()
 
-                # Conteneur cliquable en plein écran
-                with ui.button(on_click=start_app).props('flat') \
-                    .classes('p-0 m-0 rounded-none overflow-hidden shadow-none w-full h-full relative'):
-                    
-                    # 1. Votre image rouge d'origine (sans texte incrusté)
-                    ui.image('/static/accueil.jpg').classes('w-full h-full') \
-                        .style('object-fit: contain !important; background-color: #b91c1c;')
-                    
-                    # 2. L'accroche sur 3 lignes incrustée informatiquement au premier plan
-                    with ui.column().classes('absolute top-[6vh] left-0 right-0 items-center justify-center px-4 pointer-events-none'):
-                        if state.lang == 'FR':
-                            accroche = """
-                            <div style='color: #ffffff; font-weight: 900; font-size: 26px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>CONTRAT DE TRAVAIL S.P.E :</div>
-                            <div style='color: #ffffff; font-weight: 500; font-size: 24px; margin-top: 4px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>suivez le fil</div>
-                            <div style='color: #ffffff; font-weight: 500; font-size: 24px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>selon votre profil.</div>
-                            """
-                        else:
-                            accroche = """
-                            <div style='color: #ffffff; font-weight: 900; font-size: 26px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>S.P.E EMPLOYMENT CONTRACT:</div>
-                            <div style='color: #ffffff; font-weight: 500; font-size: 24px; margin-top: 4px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>follow the guide</div>
-                            <div style='color: #ffffff; font-weight: 500; font-size: 24px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>according to your profile.</div>
-                            """
-                        ui.html(accroche).classes('text-center uppercase tracking-wide')
+            # Le conteneur s'adapte à la largeur max de l'application
+            with ui.column().classes('w-full max-w-md mx-auto items-center justify-start no-wrap p-0 bg-[#b91c1c] relative cursor-pointer') \
+                .on('click', start_app):
+                
+                # L'image dicte la hauteur naturelle sans déformer l'écran
+                ui.image('/static/accueil.jpg?v=2').classes('w-full h-auto pointer-events-none')
+                
+                # L'accroche avec un positionnement top en pourcentage et un line-height très serré
+                with ui.column().classes('absolute top-[7%] left-0 right-0 items-center justify-center px-4 pointer-events-none'):
+                    if state.lang == 'FR':
+                        accroche = """
+                        <div style='color: #ffffff; font-weight: 900; font-size: 22px; line-height: 1.1; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>CONTRAT DE TRAVAIL S.P.E :</div>
+                        <div style='color: #ffffff; font-weight: 500; font-size: 20px; line-height: 1.1; margin-top: 5px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>suivez le fil</div>
+                        <div style='color: #ffffff; font-weight: 500; font-size: 20px; line-height: 1.1; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>selon votre profil.</div>
+                        """
+                    else:
+                        accroche = """
+                        <div style='color: #ffffff; font-weight: 900; font-size: 22px; line-height: 1.1; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>S.P.E EMPLOYMENT CONTRACT:</div>
+                        <div style='color: #ffffff; font-weight: 500; font-size: 20px; line-height: 1.1; margin-top: 5px; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>follow the guide</div>
+                        <div style='color: #ffffff; font-weight: 500; font-size: 20px; line-height: 1.1; text-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>according to your profile.</div>
+                        """
+                    ui.html(accroche).classes('text-center uppercase tracking-wide')
             return
+        
 
         if state.step not in [0, 1]:
             ui.button(txt['home'], on_click=lambda: set_step(1)) \
