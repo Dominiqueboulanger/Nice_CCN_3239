@@ -4,12 +4,10 @@ import sql_manager as db
 import css
 import os
 import sqlite3
-import random  # <-- Il faut s'assurer qu'il est bien ici
+import random  
 import game_definitions
 import game_translation
 
-
-import os
 try:
     os.system("lsof -t -i:9000 | xargs kill -9 > /dev/null 2>&1")
 except:
@@ -18,26 +16,19 @@ except:
 # --- 2. CONFIGURATION DES RESSOURCES ---
 app.add_static_files('/static', 'static')
 
-# 👇 BLOC CORRIGÉ : SUPPRIME LES CACHES SANS BLOQUER LA LECTURE DES PDF
 @app.middleware
 async def add_cache_control_headers(request, call_next):
-    # SÉCURITÉ : Si la requête demande un fichier dans /static, on la laisse passer directement
     if request.url.path.startswith("/static"):
         return await call_next(request)
         
     response = await call_next(request)
-    
-    # Si la requête concerne la page d'accueil ou du code HTML
     if request.url.path == "/" or "text/html" in response.headers.get("content-type", ""):
-        # Dit au navigateur de retélécharger la page si elle a changé
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
-        
-        # Déclenche l'option de nettoyage pour votre iPhone (Clear-Site-Data)
         response.headers["Clear-Site-Data"] = '"cache", "storage"'
-        
     return response
+
 # --- 3. GESTION DE L'ÉTAT UTILISATEUR ---
 class AppState:
     def __init__(self):
@@ -47,32 +38,25 @@ class AppState:
         self.code_metier_affiche = ""
         self.art_cible = ""
         self.annexe_selectionnee = None
-        self.annexes_cache = None          # <-- NOUVEAU : Cache pour éviter de bloquer le HUB au démarrage
-        
-## --- 4. COMPOSANTS D'AFFICHAGE RÉUTILISABLES ---
+        self.annexes_cache = None          
 
+# --- 4. COMPOSANTS D'AFFICHAGE RÉUTILISABLES ---
 def get_linked_articles(num_article):
-    """Récupère uniquement les cibles directes (ex: 128-2 vers 41-2)"""
     try:
         conn = sqlite3.connect('CCN_3239.db')
         conn.row_factory = sqlite3.Row
-        # MODIFICATION 1 : On cherche uniquement la SOURCE (évite de remonter au parent)
         query = "SELECT cible FROM liens_inter_articles WHERE source = ?"
         liens = conn.execute(query, (str(num_article),)).fetchall()
         conn.close()
-        
         return sorted(list(set(str(l['cible']) for l in liens)))
     except Exception:
         return []
 
 def render_result(num_article, txt, current_state, set_step_func):
-    """Affiche l'article et sa cascade avec précision"""
     if not num_article or num_article == "None":
         ui.label("⚠️ Article non renseigné").classes('text-orange-500 p-4 bg-orange-50 rounded-xl w-full')
         return
 
-    # MODIFICATION 2 : On utilise une requête qui permet la cascade (LIKE)
-    # tout en assurant l'ordre (le parent 41 avant les enfants 41-1)
     conn = sqlite3.connect('CCN_3239.db')
     conn.row_factory = sqlite3.Row
     query = """
@@ -88,37 +72,28 @@ def render_result(num_article, txt, current_state, set_step_func):
     ui.label(f"Article {num_article}").classes('text-xl font-bold text-blue-700 w-full mb-4')
     
     for art in articles:
-        # On identifie précisément l'article de la boucle pour ses liens propres
         id_art_boucle = str(art['numero_article_isole'])
-        
         with ui.column().classes('article-card w-full mb-4'):
             ui.label(art['affichage_article']).classes('font-bold text-lg text-slate-900')
             
-           # --- AFFICHAGE DU TEXTE SIMPLIFIÉ (Avec support HTML pour le rouge) ---
             res_col = 'texte_simplifie' if current_state.lang == 'FR' else 'texte_simplifie_en'
             if art[res_col]:
-                with ui.column().classes('bg-blue-50 p-4 rounded-xl w-full my-3 border border-blue-100'):
-                    
-                    # 1. On définit les deux versions de la phrase
+                with ui.column().classes('bg-blue-50 p-4 rounded-xl w-full my-2 border border-blue-100 gap-0.5'):
                     mention_fr = "Cet article a fait l'objet d'une modification en septembre 2025 (Avenant n° 10)"
                     mention_en = "This article was amended in September 2025 (Amendment No. 10)"
                     
                     texte_final = art[res_col]
                     couleur_rouge = "color: #ef4444; font-weight: bold;"
 
-                    # 2. On applique le remplacement selon la langue détectée dans le texte
                     if mention_fr in texte_final:
                         texte_final = texte_final.replace(mention_fr, f'<span style="{couleur_rouge}">{mention_fr}</span>')
-                    
                     if mention_en in texte_final:
                         texte_final = texte_final.replace(mention_en, f'<span style="{couleur_rouge}">{mention_en}</span>')
-                    
-                    # 3. Affichage avec ui.html pour interpréter les styles
-                    ui.html(texte_final).classes('text-slate-800')
+
+                    texte_final = texte_final.replace('\n', '<br>')
+                    ui.html(texte_final).classes('text-slate-800 text-sm').style('line-height: 1.25;')
             
-            # --- BLOC NAVIGATION INTER-ARTICLES ---
             try:
-                # Vérification du socle commun (40 à 88)
                 num_principal = int(id_art_boucle.split('-')[0].split('.')[0])
                 is_socle_commun = 40 <= num_principal <= 88
             except ValueError:
@@ -134,10 +109,9 @@ def render_result(num_article, txt, current_state, set_step_func):
                                 .props('outline dense size=sm color=primary') \
                                 .classes('rounded-full px-3 text-[10px]')
 
-            # Texte officiel
             with ui.expansion(txt.get('official', '⚖️ Texte officiel')).classes('w-full text-sm text-slate-500 border-t mt-4'):
-                ui.markdown(art['texte_integral']).classes('text-[12px] italic')
-                
+                ui.markdown(art['texte_integral']).classes('text-[14px] italic')
+
 # --- 5. MOTEUR DE NAVIGATION ET LOGIQUE D'INTERFACE ---
 @ui.refreshable
 def build_ui(state, h_zone, c_zone):
@@ -146,28 +120,7 @@ def build_ui(state, h_zone, c_zone):
     c_zone.style('margin-top: 44px;' if state.step != 0 else 'margin-top: 0px;')
     
     def set_step(s, data=None):
-        state.step = s
-        if data: 
-            # Redirection métier vers colonnes réelles pour le SQL
-            if 'colonne_metier' in data:
-                m = data['colonne_metier']
-                if m in ["art_ap", "art_av"]: data['colonne_metier'] = "art_ef"
-                elif m == "art_cesu": data['colonne_metier'] = "art_sc"
-            
-            state.choix.update(data)
-            
-            if 'colonne_metier' in data:
-                mapping = {
-                    "art_am": "Socle Assistant Maternel",
-                    "art_sc": "Socle Commun",
-                    "art_ef": "Salarié Particulier Employeur"
-                }
-                state.code_metier_affiche = mapping.get(data['colonne_metier'], "CCN 3239")
-            
-            if 'art_cible' in data: state.art_cible = data['art_cible']
-            if 'annexe_id' in data: state.annexe_selectionnee = data['annexe_id']
-    def set_step(s, data=None):
-        """Mise à jour sélective de l'état applicatif et routage des alias métiers"""
+        """Mise à jour unique, propre et sécurisée de l'état applicatif avec Google Analytics"""
         state.step = s
         if data: 
             if 'colonne_metier' in data:
@@ -185,10 +138,9 @@ def build_ui(state, h_zone, c_zone):
                 }
                 state.code_metier_affiche = mapping.get(data['colonne_metier'], "CCN 3239")
             
-            if 'art_cible' in data: state.art_cible = data['art_cible']
+            if 'art_cible' in data: state.art_cible = str(data['art_cible'])
             if 'annexe_id' in data: state.annexe_selectionnee = data['annexe_id']
 
-        # --- AJOUT ICI : Envoi automatique du clic d'écran à Google Analytics ---
         try:
             ui.run_javascript(f"gtag('event', 'screen_view', {{'screen_name': 'Ecran_{s}'}});")
         except Exception:
@@ -221,7 +173,7 @@ def build_ui(state, h_zone, c_zone):
     # --- 6. CONSTRUCTION DE L'ENTÊTE (H_ZONE) ---
     with h_zone:
         if state.step != 0:
-            h_zone.set_visibility(True)  # On l'affiche sur les autres étapes
+            h_zone.set_visibility(True)  
             with ui.row().classes('w-full px-4 py-1 header-row items-center'):
                 ui.label(state.code_metier_affiche if state.code_metier_affiche else 'CCN 3239') \
                     .classes('text-blue-600 font-black text-base truncate flex-shrink')
@@ -229,27 +181,20 @@ def build_ui(state, h_zone, c_zone):
                     ui.button('🇫🇷', on_click=lambda: (setattr(state, 'lang', 'FR'), build_ui.refresh())).props('flat').classes('text-xl p-0')
                     ui.button('🇬🇧', on_click=lambda: (setattr(state, 'lang', 'EN'), build_ui.refresh())).props('flat').classes('text-xl p-0')
         else:
-            h_zone.set_visibility(False)  # On le masque TOTALEMENT à l'étape 0
+            h_zone.set_visibility(False)  
             
     # --- 7. CONSTRUCTION DU CONTENU DYNAMIQUE (C_ZONE) ---
     with c_zone:
-        # La suite de ton code...
-       # --- ÉTAPE 0 : ÉCRAN D'ACCUEIL CORRIGÉ (INTERLIGNES & POSTION IPHONE) ---
+        # --- ÉTAPE 0 : ÉCRAN D'ACCUEIL ---
         if state.step == 0:
             h_zone.set_visibility(False)
-            
             def start_app():
                 state.step = 1
                 build_ui.refresh()
 
-            # Le conteneur s'adapte à la largeur max de l'application
             with ui.column().classes('w-full max-w-md mx-auto items-center justify-start no-wrap p-0 bg-[#b91c1c] relative cursor-pointer') \
                 .on('click', start_app):
-                
-                # L'image dicte la hauteur naturelle sans déformer l'écran
                 ui.image('/static/accueil.jpg?v=2').classes('w-full h-auto pointer-events-none')
-                
-                # L'accroche avec un positionnement top en pourcentage et un line-height très serré
                 with ui.column().classes('absolute top-[7%] left-0 right-0 items-center justify-center px-4 pointer-events-none'):
                     if state.lang == 'FR':
                         accroche = """
@@ -266,25 +211,18 @@ def build_ui(state, h_zone, c_zone):
                     ui.html(accroche).classes('text-center uppercase tracking-wide')
             return
         
-
         if state.step not in [0, 1]:
             ui.button(txt['home'], on_click=lambda: set_step(1)) \
                 .props('flat dense icon=home color=primary') \
                 .classes('w-full mb-4 text-slate-500 border-b pb-2')
 
+        # --- ÉTAPE 1 : CHOIX DU MÉTIER ---
         if state.step == 1:
-            # On définit une hauteur minimale de 450px et on ajuste le padding (p-12 au lieu de p-8)
             with ui.dialog() as direct_dialog, ui.card().classes('items-center p-12 rounded-3xl') \
                 .style('width: 350px !important; min-height: 450px !important; justify-content: center !important;'):
-                
-                # On agrandit la marge sous le titre
                 ui.label(txt['search_label']).classes('font-bold text-center text-slate-800 text-2xl mb-6')
-                
-                # On donne de l'espace autour de l'input
                 i_direct = ui.input(placeholder="---").classes('w-full text-center font-bold') \
                     .style('font-size: 40px !important; height: 80px !important; margin-bottom: 20px !important;')
-                
-                # Bouton plus haut également
                 ui.button(txt['search_btn'], on_click=lambda: (set_step('DIRECT', {'art_cible': i_direct.value}), direct_dialog.close())) \
                     .classes('w-full py-6 mt-6 bg-blue-900 text-white rounded-xl font-bold text-lg')
 
@@ -299,19 +237,17 @@ def build_ui(state, h_zone, c_zone):
                 {"c": "JEUX", "fr": "TESTEZ VOS CONNAISSANCES", "en": "TEST YOUR KNOWLEDGE", "icon": "fa-gamepad", "is_special": True}
             ]
 
-            # --- Extrait de la ligne 232 corrigée ---
             with ui.element('div').classes('grid-container w-full'):
                 for m in METIERS_DATA:
                     label_affiche = m['fr'] if state.lang == 'FR' else m['en']
                     is_special = m.get('is_special', False)
                     
-                    # Définition des styles (st) et actions
                     if m['c'] == "DIRECT": 
                         on_click_action = lambda: direct_dialog.open()
                         st = 'border: 2px solid #10b981 !important;'
                     elif m['c'] == "JEUX":
                         on_click_action = lambda c=m['c']: set_step(c)
-                        st = 'border: 2px solid #ef4444 !important;'  # Rouge (Tailwind red-500)
+                        st = 'border: 2px solid #ef4444 !important;'  
                     elif is_special: 
                         on_click_action = lambda c=m['c']: set_step(c)
                         st = 'border: 2px solid #3b82f6 !important;'
@@ -319,11 +255,11 @@ def build_ui(state, h_zone, c_zone):
                         on_click_action = lambda c=m['c'], l=label_affiche: set_step(2, {'colonne_metier': c, 'label_metier': l})
                         st = 'border: 2px solid #e2e8f0 !important;'
 
-                    # LA LIGNE 232 DOIT ÊTRE ALIGNÉE ICI :
                     with ui.card().classes('q-card h-24 items-center justify-center text-center cursor-pointer shadow-sm').style(st).on('click', on_click_action):
                         ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
                         ui.label(label_affiche).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
+        # --- ÉTAPE 2 : GESTION OU FIN ---
         elif state.step == 2:
             ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-2 px-2')
             query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
@@ -335,6 +271,7 @@ def build_ui(state, h_zone, c_zone):
                     ui.button(label_bouton, on_click=lambda o=o: set_step(3, {'etape_val': o})).classes(css.BTN_STYLE)
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
+        # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
             f = f"WHERE (etape_vie = '{state.choix['etape_val']}' OR etape_vie_en = '{state.choix['etape_val']}') AND {col_filtre} != ''"
             fams = db.fetch_options("famille", state.lang, f)
@@ -342,35 +279,33 @@ def build_ui(state, h_zone, c_zone):
                 for f_v in fams: ui.button(f_v, on_click=lambda f_v=f_v: set_step(4, {'famille_val': f_v})).classes(css.BTN_STYLE)
             ui.button(txt['back'], on_click=lambda: set_step(2)).props('flat').classes('w-full mt-4')
 
+        # --- ÉTAPE 4 : THÈMES (AVEC BYPASS) ---
         elif state.step == 4:
             f = f"WHERE (famille = '{state.choix['famille_val']}' OR famille_en = '{state.choix['famille_val']}') AND {col_filtre} != ''"
             thms = db.fetch_options("theme", state.lang, f)
             with ui.column().classes('w-full'):
-                for t in thms: ui.button(t, on_click=lambda t=t: set_step(5, {'theme': t})).classes(css.BTN_STYLE)
+                for t in thms:
+                    def au_clic_theme(theme_selectionne=t):
+                        conn = db.get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute(f"SELECT {col_filtre} FROM questions WHERE (theme = ? OR theme_en = ?) AND {col_filtre} IS NOT NULL AND {col_filtre} != '' LIMIT 1", (theme_selectionne, theme_selectionne))
+                        res_art = cursor.fetchone()
+                        conn.close()
+                        
+                        if res_art and res_art[0]:
+                            set_step('DIRECT', {'theme': theme_selectionne, 'art_cible': str(res_art[0])})
+                        else:
+                            ui.notify("⚠️ Aucun article associé à ce thème pour votre profil.", color="orange")
+
+                    ui.button(t, on_click=au_clic_theme).classes(css.BTN_STYLE)
             ui.button(txt['back'], on_click=lambda: set_step(3)).props('flat').classes('w-full mt-4')
 
-        elif state.step == 5:
-            col_q = "question_claire" if state.lang == 'FR' else "question_en"
-            col_th = "theme" if state.lang == 'FR' else "theme_en"
-            conn = db.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT id, {col_q} FROM questions WHERE {col_th} = ? AND {col_filtre} != ''", (state.choix['theme'],))
-            questions = cursor.fetchall()
-            conn.close()
-            for q in questions:
-                ui.button(q[1], on_click=lambda q_id=q[0]: set_step(6, {'id_question': q_id})).classes('w-full h-auto py-4 bg-white text-black border-2 border-slate-200 rounded-xl px-4 text-left mb-3 font-medium')
+        # --- ÉTAPE : RENDU DIRECT ARTICLE ---
+        elif state.step == 'DIRECT':
+            render_result(state.art_cible, txt, state, set_step)
             ui.button(txt['back'], on_click=lambda: set_step(4)).props('flat').classes('w-full mt-4')
 
-        elif state.step == 6:
-            num_art = db.get_article_from_question(state.choix['id_question'], state.choix['colonne_metier'])
-            render_result(num_art, txt, state, set_step) # On ajoute set_step ici
-            ui.button(txt['back'], on_click=lambda: set_step(5)).props('flat').classes('w-full mt-4')
-
-        elif state.step == 'DIRECT':
-            render_result(state.art_cible, txt, state, set_step) # On ajoute set_step ici
-            ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
-
-        # --- ÉTAPE : LISTE DES ANNEXES (GRILLE) ---
+        # --- ÉTAPE : LISTE DES ANNEXES ---
         elif state.step == 'LISTE_ANNEXES':
             ui.label(txt['annexes_btn']).classes('text-xl font-bold mb-4')
             conn = sqlite3.connect('CCN_3239.db', timeout=20)
@@ -386,15 +321,14 @@ def build_ui(state, h_zone, c_zone):
                         with ui.column().classes('items-center justify-center p-3 gap-1 w-full text-center h-full'):
                             ui.label(f"ANNEXE N°{n}").classes('text-[10px] font-black text-blue-600 uppercase')
                             ui.label(t.upper()).classes('text-[10px] font-bold leading-tight text-slate-700 uppercase')
-                
-                # Le 8ème cartouche transformé en bouton vers l'Avenant 10
-                with ui.card().classes('w-full h-28 bg-red-50 text-red-600 border-2 border-red-200 rounded-2xl shadow-sm p-0 overflow-hidden cursor-pointer') \
-                    .on('click', lambda: set_step('VOIR_AVENANT_10')):
-                    with ui.column().classes('items-center justify-center p-3 gap-1 w-full text-center h-full'):
-                        ui.html('<i class="fa-solid fa-file-signature" style="font-size: 1rem;"></i>')
-                        ui.label('Avenant n° 10 du\n9 septembre 2025').classes('text-[10px] font-black leading-tight uppercase').style('white-space: pre-line;')
+            
+            with ui.card().classes('w-full h-28 bg-red-50 text-red-600 border-2 border-red-200 rounded-2xl shadow-sm p-0 overflow-hidden cursor-pointer') \
+                .on('click', lambda: set_step('VOIR_AVENANT_10')):
+                with ui.column().classes('items-center justify-center p-3 gap-1 w-full text-center h-full'):
+                    ui.html('<i class="fa-solid fa-file-signature" style="font-size: 1rem;"></i>')
+                    ui.label('Avenant n° 10 du\n9 septembre 2025').classes('text-[10px] font-black leading-tight uppercase').style('white-space: pre-line;')
 
-        # --- ÉTAPE : DÉTAIL D'UNE ANNEXE CLASSIQUE ---
+        # --- ÉTAPE : DETAIL D'UNE ANNEXE ---
         elif state.step == 'VOIR_ANNEXE':
             conn = sqlite3.connect('CCN_3239.db', timeout=20)
             conn.row_factory = sqlite3.Row
@@ -409,20 +343,15 @@ def build_ui(state, h_zone, c_zone):
                     with ui.element('div').classes('annexe-card-info'):
                         ui.markdown(resume if resume else "Résumé à venir...").classes('text-slate-700 leading-relaxed')
                     
-                    # 👇 BLOC BOUTON SÉCURISÉ POUR LES TÉLÉPHONES MOBILE
                     with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl items-center mt-4'):
                         ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
-                        
-                        # 1. On génère l'URL fixe
                         cible_pdf = f"/static/Annexe_{res['numero']}.pdf"
-                        
-                        # 2. On utilise un lien HTML natif (Invisible pour le style, mais compris par l'iPhone)
                         with ui.link(target=cible_pdf, new_tab=False).classes('w-full text-center style="text-decoration: none;"'):
                             ui.button("CONSULTER LE PDF", icon='visibility').props('elevated color=red-800').classes('rounded-full w-full')
                             
                     ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
 
-        # --- ÉTAPE : PAGE SPÉCIALE AVENANT 10 ---
+        # --- ÉTAPE : AVENANT 10 ---
         elif state.step == 'VOIR_AVENANT_10':
             with ui.column().classes('w-full items-center gap-4'):
                 ui.label("AVENANT N° 10").classes('text-blue-600 font-bold uppercase text-xs tracking-widest')
@@ -437,9 +366,10 @@ def build_ui(state, h_zone, c_zone):
 
                 ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
 
+        # --- ÉTAPE : JEUX ---
         elif state.step == 'JEUX':
             ui.label(txt['game_btn']).classes('text-xl font-bold mb-12 text-slate-800 w-full text-center')
-            ui.space().classes('h-4')  # <-- Crée un bloc de séparation invisible de la hauteur de votre choix (h-4, h-6, etc.)
+            ui.space().classes('h-4')  
             ui.space().classes('h-4') 
             with ui.column().classes('w-full gap-4'):
                 ui.button('LEXIQUE ↔ DÉFINITIONS', on_click=lambda: set_step('GAME_ASSOC')).classes(css.BTN_STYLE)
@@ -461,51 +391,38 @@ def build_ui(state, h_zone, c_zone):
 # --- 8. INITIALISATION DE LA PAGE PRINCIPALE ---
 @ui.page('/')
 def main_page():
-    # 1. Votre NOUVEL ID de mesure officiel et définitif
     ga_id = "G-71B4Z4QCLZ"  
-
-    # 2. Injection du script conforme (sans pop-up utilisateur)
     ui.add_head_html(f'''
         <script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
         <script>
           window.dataLayer = window.dataLayer || [];
           function gtag(){{dataLayer.push(arguments);}}
-          
-          // Configuration du consentement invisible pour l'Europe (Corrigé)
           gtag('consent', 'default', {{
             'ad_storage': 'denied',
             'ad_user_data': 'denied',
             'ad_personalization': 'denied',
             'analytics_storage': 'granted'
           }});
-          
           gtag('js', new Date());
           gtag('config', '{ga_id}');
         </script>
-
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>{css.STYLE_CSS}</style>
         <style>
-            /* On double les accolades ici car on est dans une f-string */
             .header-row .q-btn__content {{ font-size: 1.25rem !important; }}
         </style>
     ''')
     game_definitions.inject_custom_style()
     user_state = AppState()
-    
-    # Zone d'en-tête
     h_zone = ui.column().classes('w-full sticky-header')
-    
-    # Zone de contenu
     c_zone = ui.column().classes('w-full max-w-md mx-auto p-0 gap-0 items-center')
-    
     build_ui(user_state, h_zone, c_zone)
+
 # --- 9. CONFIGURATION ET LANCEMENT SERVEUR ---
 ui.run(
     title="Guide CCN", 
     host='0.0.0.0', 
-    # FORCEZ LE PORT 8080 ICI
     port=int(os.environ.get("PORT", 8080)), 
     reload=False,
     reconnect_timeout=30,
