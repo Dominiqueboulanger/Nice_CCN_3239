@@ -389,17 +389,15 @@ def build_ui(state, h_zone, c_zone):
             ui.button(txt['back'], on_click=lambda: set_step('JEUX')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
 
 # --- 8. INITIALISATION DE LA PAGE PRINCIPALE ---
+
 @ui.page('/')
 def main_page():
     ui.add_head_html('''
-        <!-- Google Tag Manager -->
         <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
         new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
         j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-        })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
-        <!-- End Google Tag Manager -->
-        
+        })(window,document,'script','dataLayer','GTM-NN7VZZND');</script>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>''' + css.STYLE_CSS + '''</style>
