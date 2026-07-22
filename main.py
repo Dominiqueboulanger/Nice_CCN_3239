@@ -29,7 +29,7 @@ async def add_cache_control_headers(request, call_next):
         response.headers["Clear-Site-Data"] = '"cache", "storage"'
     return response
 
-# --- 3. GESTION DE L'ÉTAT UTILISATEUR ---
+# --- 3. GESTION DE L'ÉTAT UTILISATEUR ET CONSTANTES ---
 class AppState:
     def __init__(self):
         self.step = 0
@@ -39,6 +39,54 @@ class AppState:
         self.art_cible = ""
         self.annexe_selectionnee = None
         self.annexes_cache = None          
+
+ICONES_FAMILLES = {
+    # Étapes de vie (Nouveaux intitulés)
+    "ENTRER & SORTIR DU CONTRAT": "fa-door-open",
+    "ENTERING AND EXITING THE CONTRACT": "fa-door-open",
+    "AU QUOTIDIEN : 📆🏝️💶": "fa-folder-open",
+    "EVERYDAY LIFE: 📆🏝️💶": "fa-folder-open",
+
+    # Embauche & Contrat
+    "CONTRAT & EMBAUCHE": "fa-file-signature",
+    "CONTRACT & HIRING": "fa-file-signature",
+    "MODALITÉS": "fa-sliders",
+    "TERMS AND CONDITIONS": "fa-sliders",
+    
+    # Temps de travail & Congés
+    "DURÉE DU TRAVAIL": "fa-clock",
+    "WORKING HOURS": "fa-clock",
+    "REPOS HEBDOMADAIRE": "fa-calendar-minus",
+    "WEEKLY REST": "fa-calendar-minus",
+    "JOURS FÉRIÉS, CONGÉS": "fa-umbrella-beach",
+    "HOLIDAYS & ABSENCES": "fa-umbrella-beach",
+    
+    # Rémunération & Avantages
+    "SALAIRE": "fa-money-bill-wave",
+    "SALARY": "fa-money-bill-wave",
+    "RÉMUNÉRATION": "fa-euro-sign",
+    "INDEMNITÉS / PRIMES": "fa-calculator",
+    "ALLOWANCES / BONUSES": "fa-calculator",
+    "ANCIENNETÉ": "fa-award",
+    "SENIORITY": "fa-award",
+    "RETRAITE COMPLÉMENTAIRE": "fa-piggy-bank",
+    "EXTRA PENSION": "fa-piggy-bank",
+    
+    # Absences / Classification
+    "ABSENCES": "fa-user-clock",
+    "CLASSIFICATION DES EMPLOIS": "fa-layer-group",
+    "JOB CLASSIFICATION": "fa-layer-group",
+    "SANTÉ & SÉCURITÉ": "fa-user-nurse",
+    
+    # Fin de contrat
+    "RUPTURE": "fa-handshake-slash",
+    "TERMINATION": "fa-handshake-slash",
+    "LE DERNIER JOUR": "fa-calendar-check",
+    "THE LAST DAY": "fa-calendar-check",
+    
+    # Icône par défaut
+    "DEFAULT": "fa-bookmark"
+}
 
 # --- 4. COMPOSANTS D'AFFICHAGE RÉUTILISABLES ---
 def get_linked_articles(num_article):
@@ -139,7 +187,7 @@ def build_ui(state, h_zone, c_zone):
                 state.code_metier_affiche = mapping.get(data['colonne_metier'], "CCN 3239")
             
             if 'art_cible' in data: state.art_cible = str(data['art_cible'])
-            if 'annexe_id' in data: state.annexe_selectionnee = data['annexe_id']
+            if 'annexe_id' in data: state.annexe_selectionnee = str(data['annexe_id'])
 
         try:
             ui.run_javascript(f"gtag('event', 'screen_view', {{'screen_name': 'Ecran_{s}'}});")
@@ -153,7 +201,7 @@ def build_ui(state, h_zone, c_zone):
     UI_TEXT = {
         'FR': {
             'home': '🏠 ACCUEIL', 'search_label': '🔍 Recherche directe (Ex: 139)', 'search_btn': 'Aller',
-            'step1_title': 'Quel est votre métier ?', 'step2_title': 'Quelle est votre situation ?', 
+            'step1_title': 'Quel est votre métier ?', 'step2_title': 'Sur quoi porte votre question ?', 
             'gestion': 'LA GESTION DU CONTRAT', 'fin': 'LA FIN DU CONTRAT', 
             'annexes_btn': '📚 ANNEXES (Résumés & PDF)', 'back': '⬅️ RETOUR',
             'official_pdf': '📄 Consulter le PDF Officiel', 'official': '⚖️ Texte officiel',
@@ -233,7 +281,7 @@ def build_ui(state, h_zone, c_zone):
                 {"c": "art_av", "fr": "Assistant de Vie", "en": "Life Assistant", "icon": "fa-wheelchair"},
                 {"c": "art_cesu", "fr": "Autres métiers CESU", "en": "Other jobs (CESU)", "icon": "fa-briefcase"},
                 {"c": "DIRECT", "fr": "ACCÈS DIRECT À UN ARTICLE", "en": "DIRECT SEARCH", "icon": "fa-magnifying-glass", "is_special": True},
-                {"c": "LISTE_ANNEXES", "fr": "ANNEXES + AVENANTS 2026 PDF", "en": "PDF ANNEXES + AMENDMENTS 2026", "icon": "fa-file-pdf", "is_special": True},
+                {"c": "LISTE_ANNEXES", "fr": "ANNEXES + AVENANTS + MODELES DE CONTRAT PDF", "en": "PDF ANNEXES + AMENDMENTS + CONTRACT TEMPLATES", "icon": "fa-file-pdf", "is_special": True},
                 {"c": "JEUX", "fr": "TESTEZ VOS CONNAISSANCES", "en": "TEST YOUR KNOWLEDGE", "icon": "fa-gamepad", "is_special": True}
             ]
 
@@ -259,31 +307,47 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
                         ui.label(label_affiche).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-        # --- ÉTAPE 2 : GESTION OU FIN ---
+        # --- ÉTAPE 2 : SITUATION / ÉTAPE DE VIE ---
         elif state.step == 2:
-            ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-2 px-2')
+            ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
             query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
             options = db.fetch_options("etape_vie", state.lang, query_filter)
-            with ui.column().classes('w-full'):
+            
+            with ui.element('div').classes('grid-container w-full'):
                 for o in options:
-                    is_life = "Vie" in o or "Life" in o
-                    label_bouton = txt['gestion'] if is_life else txt['fin']
-                    ui.button(label_bouton, on_click=lambda o=o: set_step(3, {'etape_val': o})).classes(css.BTN_STYLE)
+                    icon = ICONES_FAMILLES.get(o.upper(), ICONES_FAMILLES["DEFAULT"])
+                    
+                    with ui.card().classes('q-card h-28 items-center justify-center text-center cursor-pointer shadow-sm') \
+                        .style('border: 2px solid #e2e8f0 !important;') \
+                        .on('click', lambda o=o: set_step(3, {'etape_val': o})):
+                        ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
+                        ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
+            
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
             f = f"WHERE (etape_vie = '{state.choix['etape_val']}' OR etape_vie_en = '{state.choix['etape_val']}') AND {col_filtre} != ''"
             fams = db.fetch_options("famille", state.lang, f)
-            with ui.column().classes('w-full'):
-                for f_v in fams: ui.button(f_v, on_click=lambda f_v=f_v: set_step(4, {'famille_val': f_v})).classes(css.BTN_STYLE)
-            ui.button(txt['back'], on_click=lambda: set_step(2)).props('flat').classes('w-full mt-4')
+            
+            with ui.element('div').classes('grid-container w-full gap-2 px-1'):
+                for f_v in fams:
+                    icon = ICONES_FAMILLES.get(f_v.upper(), ICONES_FAMILLES["DEFAULT"])
+                    
+                    with ui.card().classes('q-card h-20 items-center justify-center text-center cursor-pointer shadow-sm p-1') \
+                        .style('border: 2px solid #e2e8f0 !important;') \
+                        .on('click', lambda f_v=f_v: set_step(4, {'famille_val': f_v})):
+                        ui.html(f'<i class="fa-solid {icon} mb-0.5 text-slate-700" style="font-size: 1.3rem;"></i>')
+                        ui.label(f_v).classes('text-[11px] font-bold uppercase leading-tight text-slate-800 px-0.5')
+                        
+            ui.button(txt['back'], on_click=lambda: set_step(2)).props('flat').classes('w-full mt-2')
 
         # --- ÉTAPE 4 : THÈMES (AVEC BYPASS) ---
         elif state.step == 4:
             f = f"WHERE (famille = '{state.choix['famille_val']}' OR famille_en = '{state.choix['famille_val']}') AND {col_filtre} != ''"
             thms = db.fetch_options("theme", state.lang, f)
-            with ui.column().classes('w-full'):
+            
+            with ui.element('div').classes('grid-container w-full'):
                 for t in thms:
                     def au_clic_theme(theme_selectionne=t):
                         conn = db.get_connection()
@@ -297,7 +361,14 @@ def build_ui(state, h_zone, c_zone):
                         else:
                             ui.notify("⚠️ Aucun article associé à ce thème pour votre profil.", color="orange")
 
-                    ui.button(t, on_click=au_clic_theme).classes(css.BTN_STYLE)
+                    icon = ICONES_FAMILLES.get(t.upper(), ICONES_FAMILLES["DEFAULT"])
+
+                    with ui.card().classes('q-card h-24 items-center justify-center text-center cursor-pointer shadow-sm') \
+                        .style('border: 2px solid #e2e8f0 !important;') \
+                        .on('click', au_clic_theme):
+                        ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
+                        ui.label(t).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
+
             ui.button(txt['back'], on_click=lambda: set_step(3)).props('flat').classes('w-full mt-4')
 
         # --- ÉTAPE : RENDU DIRECT ARTICLE ---
@@ -334,22 +405,59 @@ def build_ui(state, h_zone, c_zone):
             conn.row_factory = sqlite3.Row
             res = conn.execute("SELECT titre, resume_fr, resume_en, numero FROM annexes WHERE numero = ?", (state.annexe_selectionnee,)).fetchone()
             conn.close()
+            
             if res:
-                resume = res['resume_fr'] if state.lang == 'FR' else res['resume_en']
-                with ui.column().classes('annexe-container w-full'):
-                    with ui.element('div').classes('annexe-title-section'):
-                        ui.label(f"ANNEXE N°{res['numero']}").classes('text-blue-600 font-bold uppercase text-xs tracking-widest')
-                        ui.label(res['titre']).classes('text-2xl font-black text-slate-800 leading-tight')
-                    with ui.element('div').classes('annexe-card-info'):
-                        ui.markdown(resume if resume else "Résumé à venir...").classes('text-slate-700 leading-relaxed')
-                    
-                    with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl items-center mt-4'):
-                        ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
-                        cible_pdf = f"/static/Annexe_{res['numero']}.pdf"
-                        with ui.link(target=cible_pdf, new_tab=False).classes('w-full text-center style="text-decoration: none;"'):
-                            ui.button("CONSULTER LE PDF", icon='visibility').props('elevated color=red-800').classes('rounded-full w-full')
-                            
-                    ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
+                # TRAITEMENT SPÉCIFIQUE POUR L'ANNEXE 8 (MODÈLES DE CONTRAT)
+                # TRAITEMENT SPÉCIFIQUE POUR L'ANNEXE 8 (MODÈLES DE CONTRAT)
+                # TRAITEMENT SPÉCISIFIQUE POUR L'ANNEXE 8 (MODÈLES DE CONTRAT)
+                if str(res['numero']) == "8":
+                    with ui.column().classes('annexe-container w-full gap-4'):
+                        with ui.element('div').classes('annexe-title-section text-center w-full'):
+                            ui.label("ANNEXE N°8").classes('text-blue-600 font-bold uppercase text-xs tracking-widest')
+                            ui.label("Modèles de contrat de travail").classes('text-2xl font-black text-slate-800 leading-tight')
+                        
+                        ui.label("Téléchargez ci-dessous les modèles officiels au format PDF :").classes('text-slate-600 text-sm font-medium text-center w-full mb-2')
+
+                        modeles_fichiers = [
+                            {"titre": "CDI - Garde d'enfants (Garde simple)", "fichier": "Contrat-CDI-Pajemploi-Garde-simple.pdf"},
+                            {"titre": "CDI - Garde d'enfants (Garde partagée)", "fichier": "Contrat-CDI-Pajemploi-Garde-partagée.pdf"},
+                            {"titre": "CDI - Assistante maternelle agréée", "fichier": "Contrat-CDI-Pajemploi-Assistante maternelle.pdf"},
+                            {"titre": "CDI - Salarié du particulier employeur", "fichier": "Contrat-CDI-Cesu-Salaries-a-domicile.pdf"},
+                            {"titre": "CDD - Garde d'enfants (Garde simple)", "fichier": "Contrat-CDD-Pajemploi-GED-Simple-FORMULAIRE.pdf"},
+                            {"titre": "CDD - Salarié du particulier employeur", "fichier": "Contrat-CDD-Cesu-Salaries-a-domicile.pdf"},
+                        ]
+
+                        # Retour de la grille à 2 colonnes (grid-cols-2)
+                        with ui.element('div').classes('grid grid-cols-2 gap-3 w-full'):
+                            for mod in modeles_fichiers:
+                                with ui.card().classes('w-full bg-white p-4 border border-slate-200 rounded-3xl shadow-sm items-center justify-between text-center gap-2'):
+                                    # Titre du contrat
+                                    ui.label(mod['titre']).classes('text-slate-800 font-bold text-xs leading-snug my-auto')
+                                    
+                                    # Bouton icône seule (round)
+                                    cible_pdf = f"/static/{mod['fichier']}"
+                                    with ui.link(target=cible_pdf, new_tab=True).classes('style="text-decoration: none;"'):
+                                        ui.button(icon='download').props('round unelevated color=indigo-900').classes('text-white')
+
+                        ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
+
+                else:
+                    # AFFICHAGE CLASSIQUE DES ANNEXES 1 À 7
+                    resume = res['resume_fr'] if state.lang == 'FR' else res['resume_en']
+                    with ui.column().classes('annexe-container w-full'):
+                        with ui.element('div').classes('annexe-title-section'):
+                            ui.label(f"ANNEXE N°{res['numero']}").classes('text-blue-600 font-bold uppercase text-xs tracking-widest')
+                            ui.label(res['titre']).classes('text-2xl font-black text-slate-800 leading-tight')
+                        with ui.element('div').classes('annexe-card-info'):
+                            ui.markdown(resume if resume else "Résumé à venir...").classes('text-slate-700 leading-relaxed')
+                        
+                        with ui.card().classes('w-full bg-red-50 p-4 border border-red-100 rounded-2xl items-center mt-4'):
+                            ui.label(txt['official_pdf']).classes('text-red-900 font-bold mb-2')
+                            cible_pdf = f"/static/Annexe_{res['numero']}.pdf"
+                            with ui.link(target=cible_pdf, new_tab=False).classes('w-full text-center style="text-decoration: none;"'):
+                                ui.button("CONSULTER LE PDF", icon='visibility').props('elevated color=red-800').classes('rounded-full w-full')
+                                
+                        ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
 
         # --- ÉTAPE : AVENANT 10 ---
         elif state.step == 'VOIR_AVENANT_10':
@@ -405,10 +513,18 @@ def main_page():
             .header-row .q-btn__content { font-size: 1.25rem !important; }
         </style>
     ''')
-    game_definitions.inject_custom_style()
+    
+    # 1. On instancie l'état utilisateur D'ABORD
     user_state = AppState()
-    h_zone = ui.column().classes('w-full sticky-header')
-    c_zone = ui.column().classes('w-full max-w-md mx-auto p-0 gap-0 items-center')
+    
+    # 2. On injecte le style
+    game_definitions.inject_custom_style()
+    
+    # 3. On crée les conteneurs UI
+    h_zone = ui.column().classes('w-full sticky-header bg-white z-10 shadow-sm')
+    c_zone = ui.column().classes('w-full max-w-md mx-auto p-2 gap-0 items-center')
+    
+    # 4. On construit l'interface avec user_state enfin défini
     build_ui(user_state, h_zone, c_zone)
 
 # --- 9. CONFIGURATION ET LANCEMENT SERVEUR ---
