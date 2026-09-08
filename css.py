@@ -2,12 +2,14 @@
 
 STYLE_CSS = '''
     /* --- CONFIGURATION GÉNÉRALE --- */
-    body { 
+    html, body { 
         background-color: #f8fafc; 
         font-family: sans-serif; 
         margin: 0; 
         padding: 0; 
         -webkit-text-size-adjust: 100%; 
+        height: 100%;
+        overflow-x: hidden;
     }
 
     /* --- CORRECTIFS ERGONOMIQUES MOBILE (iOS / Safari) --- */
@@ -17,12 +19,12 @@ STYLE_CSS = '''
             font-size: 16px !important;
         }
         
-        /* Stabilise l'affichage des listes déroulantes et menus pour éviter le saut en haut de l'écran */
+        /* Stabilise l'affichage des listes déroulantes et menus */
         .q-menu {
-            position: absolute !important;
-            max-height: 45vh !important;
+            position: fixed !important;
+            max-height: 50vh !important;
             border-radius: 16px !important;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
         }
     }
 
@@ -81,7 +83,7 @@ STYLE_CSS = '''
         position: sticky; top: 0; z-index: 1000;
         background-color: rgba(248, 250, 252, 0.95);
         backdrop-filter: blur(8px); border-bottom: 1px solid #e2e8f0;
-        width: 100%; height: 44px; overflow: hidden; 
+        width: 100%; min-height: 44px; /* Remplacé height fixe par min-height pour éviter les coupures */
     }
     .header-row {
         display: flex !important; align-items: center !important;
