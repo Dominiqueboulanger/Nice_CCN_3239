@@ -324,7 +324,8 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
                         ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-            # --- RECHERCHE FAQ DIRECTE EN DESSOUS DES CARTOUCHES ---
+            # --- RECHERCHE FAQ DIRECTE (SÉCURISÉE) ---
+            options_faq = {}
             try:
                 conn_faq = db.get_connection()
                 conn_faq.row_factory = sqlite3.Row
@@ -339,24 +340,24 @@ def build_ui(state, h_zone, c_zone):
                 conn_faq.close()
 
                 options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
-
-                def aller_a_article(e):
-                    valeur_selectionnee = e.value
-                    if valeur_selectionnee in options_faq:
-                        num_art = options_faq[valeur_selectionnee]
-                        set_step('DIRECT', {'art_cible': num_art})
-
-                with ui.column().classes('w-full mt-4 mb-4 px-2'):
-                    ui.select(
-                        options=list(options_faq.keys()),
-                        with_input=True,
-                        behavior='menu',
-                        label="🔍 Ou cherchez une question / un thème...",
-                        on_change=aller_a_article
-                    ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
-
             except Exception as ex:
-                print("Erreur FAQ:", ex)
+                print("Erreur chargement FAQ:", ex)
+
+            def aller_a_article(e):
+                valeur_selectionnee = e.value
+                if valeur_selectionnee in options_faq:
+                    num_art = options_faq[valeur_selectionnee]
+                    set_step('DIRECT', {'art_cible': num_art})
+
+            # Le champ s'affichera dans tous les cas (avec les options si trouvées, ou vide)
+            with ui.column().classes('w-full mt-6 mb-4 px-2'):
+                ui.select(
+                    options=list(options_faq.keys()),
+                    with_input=True,
+                    behavior='menu',
+                    label="🔍 Ou cherchez une question / un thème...",
+                    on_change=aller_a_article
+                ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
             
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
             
