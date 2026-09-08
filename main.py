@@ -350,10 +350,11 @@ def build_ui(state, h_zone, c_zone):
                     ui.select(
                         options=list(options_faq.keys()),
                         with_input=True,
+                        behavior='menu',  # <--- Ajoutez cette ligne ici
                         label="🔍 Ou cherchez une question / un thème...",
                         on_change=aller_a_article
                     ).classes('w-full bg-white')
-
+                    
             except Exception as ex:
                 print("Erreur FAQ:", ex)
             
