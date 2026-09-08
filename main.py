@@ -307,9 +307,10 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
                         ui.label(label_affiche).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-        # --- ÉTAPE 2 : SITUATION / ÉTAPE DE VIE ---
+        # --- ÉTAPE 2 : SITUATION / ÉTAPE DE VIE & CHAMP DE RECHERCHE FAQ ---
         elif state.step == 2:
             ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
+
             query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
             options = db.fetch_options("etape_vie", state.lang, query_filter)
             
@@ -322,6 +323,39 @@ def build_ui(state, h_zone, c_zone):
                         .on('click', lambda o=o: set_step(3, {'etape_val': o})):
                         ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
                         ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
+
+            # --- RECHERCHE FAQ DIRECTE EN DESSOUS DES CARTOUCHES ---
+            try:
+                conn_faq = db.get_connection()
+                conn_faq.row_factory = sqlite3.Row
+                col_question = "question_claire" if state.lang == 'FR' else "question_en"
+                
+                query_faq = f"""
+                    SELECT {col_question} AS label, {col_filtre} AS article_cible 
+                    FROM questions 
+                    WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''
+                """
+                rows_faq = conn_faq.cursor().execute(query_faq).fetchall()
+                conn_faq.close()
+
+                options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
+
+                def aller_a_article(e):
+                    valeur_selectionnee = e.value
+                    if valeur_selectionnee in options_faq:
+                        num_art = options_faq[valeur_selectionnee]
+                        set_step('DIRECT', {'art_cible': num_art})
+
+                with ui.card().classes('q-card w-full mt-4 mb-4 shadow-sm p-3 items-center justify-center').style('border: 2px solid #e2e8f0 !important;'):
+                    ui.select(
+                        options=list(options_faq.keys()),
+                        with_input=True,
+                        label="🔍 Ou cherchez une question / un thème...",
+                        on_change=aller_a_article
+                    ).classes('w-full bg-white')
+
+            except Exception as ex:
+                print("Erreur FAQ:", ex)
             
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
@@ -407,9 +441,6 @@ def build_ui(state, h_zone, c_zone):
             conn.close()
             
             if res:
-                # TRAITEMENT SPÉCIFIQUE POUR L'ANNEXE 8 (MODÈLES DE CONTRAT)
-                # TRAITEMENT SPÉCIFIQUE POUR L'ANNEXE 8 (MODÈLES DE CONTRAT)
-                # TRAITEMENT SPÉCISIFIQUE POUR L'ANNEXE 8 (MODÈLES DE CONTRAT)
                 if str(res['numero']) == "8":
                     with ui.column().classes('annexe-container w-full gap-4'):
                         with ui.element('div').classes('annexe-title-section text-center w-full'):
@@ -427,14 +458,10 @@ def build_ui(state, h_zone, c_zone):
                             {"titre": "CDD - Salarié du particulier employeur", "fichier": "Contrat-CDD-Cesu-Salaries-a-domicile.pdf"},
                         ]
 
-                        # Retour de la grille à 2 colonnes (grid-cols-2)
                         with ui.element('div').classes('grid grid-cols-2 gap-3 w-full'):
                             for mod in modeles_fichiers:
                                 with ui.card().classes('w-full bg-white p-4 border border-slate-200 rounded-3xl shadow-sm items-center justify-between text-center gap-2'):
-                                    # Titre du contrat
                                     ui.label(mod['titre']).classes('text-slate-800 font-bold text-xs leading-snug my-auto')
-                                    
-                                    # Bouton icône seule (round)
                                     cible_pdf = f"/static/{mod['fichier']}"
                                     with ui.link(target=cible_pdf, new_tab=True).classes('style="text-decoration: none;"'):
                                         ui.button(icon='download').props('round unelevated color=indigo-900').classes('text-white')
@@ -442,7 +469,6 @@ def build_ui(state, h_zone, c_zone):
                         ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
 
                 else:
-                    # AFFICHAGE CLASSIQUE DES ANNEXES 1 À 7
                     resume = res['resume_fr'] if state.lang == 'FR' else res['resume_en']
                     with ui.column().classes('annexe-container w-full'):
                         with ui.element('div').classes('annexe-title-section'):
@@ -514,17 +540,12 @@ def main_page():
         </style>
     ''')
     
-    # 1. On instancie l'état utilisateur D'ABORD
     user_state = AppState()
-    
-    # 2. On injecte le style
     game_definitions.inject_custom_style()
     
-    # 3. On crée les conteneurs UI
     h_zone = ui.column().classes('w-full sticky-header bg-white z-10 shadow-sm')
     c_zone = ui.column().classes('w-full max-w-md mx-auto p-2 gap-0 items-center')
     
-    # 4. On construit l'interface avec user_state enfin défini
     build_ui(user_state, h_zone, c_zone)
 
 # --- 9. CONFIGURATION ET LANCEMENT SERVEUR ---
