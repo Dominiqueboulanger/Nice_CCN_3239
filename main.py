@@ -324,12 +324,14 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
                         ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-            # --- RECHERCHE FAQ DIRECTE EN DESSOUS DES CARTOUCHES ---
+            # --- RECHERCHE FAQ DIRECTE (ULTRA-SÉCURISÉE) ---
+            options_faq = {}
             try:
                 conn_faq = db.get_connection()
                 conn_faq.row_factory = sqlite3.Row
                 col_question = "question_claire" if state.lang == 'FR' else "question_en"
                 
+                # On teste si la colonne existe et contient des données
                 query_faq = f"""
                     SELECT {col_question} AS label, {col_filtre} AS article_cible 
                     FROM questions 
@@ -338,24 +340,30 @@ def build_ui(state, h_zone, c_zone):
                 rows_faq = conn_faq.cursor().execute(query_faq).fetchall()
                 conn_faq.close()
 
-                options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
+                if rows_faq:
+                    options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
+            except Exception as ex:
+                print("Erreur SQL FAQ:", ex)
 
-                def aller_a_article(e):
-                    valeur_selectionnee = e.value
-                    if valeur_selectionnee in options_faq:
-                        num_art = options_faq[valeur_selectionnee]
-                        set_step('DIRECT', {'art_cible': num_art})
+            def aller_a_article(e):
+                valeur_selectionnee = e.value
+                if valeur_selectionnee in options_faq:
+                    num_art = options_faq[valeur_selectionnee]
+                    set_step('DIRECT', {'art_cible': num_art})
 
-                with ui.card().classes('q-card w-full mt-4 mb-4 shadow-sm p-3 items-center justify-center').style('border: 2px solid #e2e8f0 !important;'):
+            # AFFICHAGE FORCÉ DU CHAMP (Même si la liste est vide pour comprendre)
+            with ui.column().classes('w-full mt-6 mb-4 px-2'):
+                if options_faq:
                     ui.select(
                         options=list(options_faq.keys()),
                         with_input=True,
+                        behavior='menu',
                         label="🔍 Ou cherchez une question / un thème...",
                         on_change=aller_a_article
-                    ).classes('w-full bg-white')
-
-            except Exception as ex:
-                print("Erreur FAQ:", ex)
+                    ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
+                else:
+                    # Message informatif si aucune question n'est liée à ce profil dans la bdd
+                    ui.label("⚠️ Aucun index de question disponible pour ce profil.").classes('text-xs text-slate-400 text-center w-full py-2')
             
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
