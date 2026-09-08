@@ -2,17 +2,39 @@
 
 STYLE_CSS = '''
     /* --- CONFIGURATION GÉNÉRALE --- */
-    body { background-color: #f8fafc; font-family: sans-serif; margin: 0; padding: 0; }
+    body { 
+        background-color: #f8fafc; 
+        font-family: sans-serif; 
+        margin: 0; 
+        padding: 0; 
+        -webkit-text-size-adjust: 100%; 
+    }
+
+    /* --- CORRECTIFS ERGONOMIQUES MOBILE (iOS / Safari) --- */
+    @media (max-width: 768px) {
+        /* Empêche le zoom automatique d'iOS et le décalage de page sur les champs */
+        input, select, textarea, .q-field__native, .q-field__input {
+            font-size: 16px !important;
+        }
+        
+        /* Stabilise l'affichage des listes déroulantes et menus pour éviter le saut en haut de l'écran */
+        .q-menu {
+            position: absolute !important;
+            max-height: 45vh !important;
+            border-radius: 16px !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+        }
+    }
 
     /* --- ACCUEIL COMPACT (Mobile) --- */
     .grid-container {
         display: grid; grid-template-columns: repeat(2, 1fr);
-        gap: 15px; /* Augmenté de 10 à 15 pour plus d'espace blanc */
+        gap: 15px; 
         width: 100%; padding: 8px 12px;
     }
     .q-card {
         border: 2px solid #e2e8f0; border-radius: 20px !important;
-        height: 115px !important; /* Augmenté pour laisser de la place au texte plus grand */
+        height: 115px !important; 
         display: flex; flex-direction: column;
         
         /* CENTRAGE TOTAL */
@@ -26,13 +48,13 @@ STYLE_CSS = '''
     
     /* TAILLE DES CARACTÈRES DANS LES CARTES */
     .q-card label { 
-        font-size: 14px !important; /* Augmenté de 11px à 14px */
+        font-size: 14px !important; 
         line-height: 1.2 !important; 
-        font-weight: 700 !important; /* Plus épais pour la lisibilité */
+        font-weight: 700 !important; 
     }
     
     .q-card i { 
-        font-size: 1.6rem !important; /* Icône légèrement plus grande */
+        font-size: 1.6rem !important; 
         margin-bottom: 6px !important; 
     }
     
@@ -76,10 +98,9 @@ STYLE_CSS = '''
         background: white; border-radius: 24px; padding: 25px;
         border: 2px solid #e2e8f0; border-top: 6px solid #1e3a8a;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        text-align: center; /* Centrage du texte dans les annexes */
+        text-align: center; 
     }
 '''
 
 # --- STYLE DES BOUTONS (Étapes Situation/Famille/Questions) ---
-# Changé text-lg pour une taille bien visible et font-black pour le gras
 BTN_STYLE = "w-full h-auto py-4 bg-white text-black border-2 border-slate-200 rounded-xl px-4 text-center mb-5 font-black shadow-sm uppercase text-lg leading-tight"
