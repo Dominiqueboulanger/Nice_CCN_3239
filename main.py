@@ -346,20 +346,20 @@ def build_ui(state, h_zone, c_zone):
                         num_art = options_faq[valeur_selectionnee]
                         set_step('DIRECT', {'art_cible': num_art})
 
-                with ui.card().classes('q-card w-full mt-4 mb-4 shadow-sm p-3 items-center justify-center').style('border: 2px solid #e2e8f0 !important;'):
+                with ui.column().classes('w-full mt-4 mb-4 px-2'):
                     ui.select(
                         options=list(options_faq.keys()),
                         with_input=True,
-                        behavior='menu',  # <--- Ajoutez cette ligne ici
+                        behavior='menu',
                         label="🔍 Ou cherchez une question / un thème...",
                         on_change=aller_a_article
-                    ).classes('w-full bg-white')
-                    
+                    ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
+
             except Exception as ex:
                 print("Erreur FAQ:", ex)
             
             ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
-
+            
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
             f = f"WHERE (etape_vie = '{state.choix['etape_val']}' OR etape_vie_en = '{state.choix['etape_val']}') AND {col_filtre} != ''"
