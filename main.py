@@ -385,12 +385,11 @@ def build_ui(state, h_zone, c_zone):
                     num_art = options_faq[valeur_selectionnee]
                     set_step('DIRECT', {'art_cible': num_art})
 
-            with ui.column().classes('w-full mt-6 mb-4 px-2'):
+            with ui.column().classes('w-full mb-4 px-2'):
                 ui.select(
                     options=list(options_faq.keys()),
                     with_input=True,
-                    behavior='menu',
-                    label="🔍 Ou cherchez un thème...",
+                    label="🔍 Rechercher un thème direct...",
                     on_change=aller_a_article
                 ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
             
