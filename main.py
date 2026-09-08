@@ -4,7 +4,7 @@ import sql_manager as db
 import css
 import os
 import sqlite3
-import random  
+import random 
 import game_definitions
 import game_translation
 
@@ -16,7 +16,7 @@ except:
 # --- 2. CONFIGURATION DES RESSOURCES ---
 app.add_static_files('/static', 'static')
 
-@app.middleware
+@app.middleware("http")
 async def add_cache_control_headers(request, call_next):
     if request.url.path.startswith("/static"):
         return await call_next(request)
@@ -342,6 +342,60 @@ def build_ui(state, h_zone, c_zone):
                     label="🔍 Ou cherchez un thème...",
                     on_change=aller_a_article
                 ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
+
+        # --- ÉTAPE 2 : SITUATION / ÉTAPE DE VIE & CHAMP DE RECHERCHE FAQ ---
+        elif state.step == 2:
+            ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
+
+            query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
+            options = db.fetch_options("etape_vie", state.lang, query_filter)
+            
+            with ui.element('div').classes('grid-container w-full'):
+                for o in options:
+                    icon = ICONES_FAMILLES.get(o.upper(), ICONES_FAMILLES["DEFAULT"])
+                    
+                    with ui.card().classes('q-card h-28 items-center justify-center text-center cursor-pointer shadow-sm') \
+                        .style('border: 2px solid #e2e8f0 !important;') \
+                        .on('click', lambda o=o: set_step(3, {'etape_val': o})):
+                        ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
+                        ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
+
+            # --- RECHERCHE THÈMES DIRECTE ---
+            options_faq = {}
+            try:
+                conn_faq = db.get_connection()
+                conn_faq.row_factory = sqlite3.Row
+                col_theme = "theme" if state.lang == 'FR' else "theme_en"
+                
+                query_faq = f"""
+                    SELECT DISTINCT {col_theme} AS label, {col_filtre} AS article_cible 
+                    FROM questions 
+                    WHERE {col_theme} IS NOT NULL AND {col_theme} != '' 
+                    AND {col_filtre} IS NOT NULL AND {col_filtre} != ''
+                """
+                rows_faq = conn_faq.cursor().execute(query_faq).fetchall()
+                conn_faq.close()
+
+                options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
+            except Exception as ex:
+                print("Erreur SQL FAQ:", ex)
+
+            def aller_a_article(e):
+                valeur_selectionnee = e.value
+                if valeur_selectionnee in options_faq:
+                    num_art = options_faq[valeur_selectionnee]
+                    set_step('DIRECT', {'art_cible': num_art})
+
+            with ui.column().classes('w-full mt-6 mb-4 px-2'):
+                ui.select(
+                    options=list(options_faq.keys()),
+                    with_input=True,
+                    behavior='menu',
+                    label="🔍 Ou cherchez un thème...",
+                    on_change=aller_a_article
+                ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
+            
+            ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
 
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
