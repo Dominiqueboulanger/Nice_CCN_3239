@@ -342,14 +342,15 @@ def build_ui(state, h_zone, c_zone):
                     on_change=aller_a_article
                 ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
 
-        # --- ÉTAPE 2 : SITUATION / ÉTAPE DE VIE & CHAMP DE RECHERCHE FAQ ---
+        # --- ÉTAPE 2 : BOUTONS PUIS CHAMP DE RECHERCHE EN DESSOUS ---
         elif state.step == 2:
             ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
 
+            # 1. D'abord les boutons des étapes de vie
             query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
             options = db.fetch_options("etape_vie", state.lang, query_filter)
             
-            with ui.element('div').classes('grid-container w-full'):
+            with ui.element('div').classes('grid-container w-full mb-4'):
                 for o in options:
                     icon = ICONES_FAMILLES.get(o.upper(), ICONES_FAMILLES["DEFAULT"])
                     
@@ -359,7 +360,7 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
                         ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-            # --- RECHERCHE THÈMES DIRECTE ---
+            # 2. Ensuite le champ de recherche direct (ainsi il reste bien en vue et ne se coince pas tout en haut sous Safari)
             options_faq = {}
             try:
                 conn_faq = db.get_connection()
@@ -393,7 +394,7 @@ def build_ui(state, h_zone, c_zone):
                     on_change=aller_a_article
                 ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
             
-            ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-4')
+            ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2')
 
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
