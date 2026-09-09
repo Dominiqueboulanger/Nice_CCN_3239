@@ -344,7 +344,7 @@ def build_ui(state, h_zone, c_zone):
                  .classes('w-full shadow-sm rounded-xl border border-slate-200 text-blue-600') \
                  .style('color: #2563eb;')
 
-        # --- ÉTAPE 2 / 2-1 : BOUTONS OU RECHERCHE DÉDIÉE ---
+       # --- ÉTAPE 2 / 2-1 : BOUTONS OU RECHERCHE DÉDIÉE ---
         elif state.step in [2, '2-1']:
             # Charger les options FAQ (commun aux étapes 2 et 2-1)
             options_faq = {}
@@ -369,46 +369,6 @@ def build_ui(state, h_zone, c_zone):
 
             # Gestion de l'affichage selon l'étape active (2 ou 2-1)
             if state.step == '2-1':
-                # --- ÉTAPE 2-1 : Page dédiée à la recherche par mot-clé ---
-                ui.label("🔍 Recherche par mot-clé").classes('text-xl font-bold text-blue-600 text-center w-full mb-6')
-
-                search_input = ui.input(
-                    label="Tapez votre recherche ici...",
-                    placeholder="Ex: Salaire, congés, période d'essai..."
-                ).props('autofocus outlined clearable input-class="text-center text-blue-600 text-lg" label-color="blue-600"') \
-                 .classes('w-full bg-white shadow-md rounded-2xl text-blue-600 mb-4 p-2') \
-                 .style('color: #2563eb;')
-
-                results_container = ui.column().classes('w-full gap-2 mb-6')
-
-                def update_results():
-                    query = (search_input.value or "").lower().strip()
-                    results_container.clear()
-                    
-                    with results_container:
-                        if not query:
-                            ui.label("Commencez à saisir un mot pour voir les suggestions...").classes('text-slate-400 text-center w-full italic text-sm py-4')
-                            return
-
-                        opt_dict = getattr(state, 'options_faq', options_faq)
-                        matching_options = {k: v for k, v in opt_dict.items() if query in k.lower()}
-
-                        if not matching_options:
-                            ui.label("Aucun résultat trouvé.").classes('text-red-500 text-center w-full py-4')
-                        else:
-                            for label, num_art in matching_options.items():
-                                with ui.card().classes('w-full p-3 cursor-pointer bg-white shadow-sm rounded-xl border border-slate-100 hover:bg-blue-50 transition') \
-                                     .on('click', lambda n=num_art: set_step('DIRECT', {'art_cible': n})):
-                                    ui.label(label).classes('text-blue-700 font-medium text-sm')
-
-                search_input.on('update:model-value', update_results)
-                update_results()
-
-                ui.button('⬅ RETOUR', on_click=lambda: set_step(2)) \
-                  .props('flat') \
-                  .classes('w-full mt-4 text-blue-600 font-semibold')
-
-            else:
                 # --- ÉTAPE 2-1 : Page dédiée à la recherche par mot-clé ---
                 ui.label("🔍 Recherche par mot-clé").classes('text-xl font-bold text-blue-600 text-center w-full mb-6')
 
@@ -449,6 +409,29 @@ def build_ui(state, h_zone, c_zone):
                 ui.button('⬅ RETOUR', on_click=lambda: set_step(2)) \
                   .props('flat') \
                   .classes('w-full mt-4 text-blue-600 font-semibold')
+
+            else:
+                # --- ÉTAPE 2 : Affichage des deux cartouches principales ---
+                ui.label(txt['step2_title']).classes('text-xl font-bold mb-6 text-slate-800 w-full text-center')
+                
+                f = f"WHERE {col_filtre} != ''"
+                etapes = db.fetch_options("etape_vie", state.lang, f)
+                
+                with ui.element('div').classes('grid grid-cols-2 gap-4 w-full mb-6'):
+                    for ev in etapes:
+                        icon = ICONES_FAMILLES.get(ev.upper(), ICONES_FAMILLES["DEFAULT"])
+                        with ui.card().classes('w-full h-40 bg-white p-4 border border-slate-200 rounded-3xl shadow-sm items-center justify-center text-center cursor-pointer hover:bg-blue-50 transition gap-3') \
+                             .on('click', lambda ev=ev: set_step(3, {'etape_val': ev})):
+                            ui.html(f'<i class="fa-solid {icon} text-slate-700" style="font-size: 1.8rem;"></i>')
+                            ui.label(ev).classes('text-xs font-black text-slate-800 uppercase leading-tight')
+
+                # Bouton pour basculer vers la recherche par mot-clé dédiée
+                with ui.card().classes('w-full p-4 cursor-pointer bg-blue-50 shadow-sm rounded-2xl border border-blue-200 hover:bg-blue-100 transition items-center text-center flex-row justify-center gap-3 mb-4') \
+                     .on('click', lambda: set_step('2-1')):
+                    ui.html('<i class="fa-solid fa-magnifying-glass text-blue-600" style="font-size: 1.2rem;"></i>')
+                    ui.label("Recherche par mot-clé").classes('text-blue-700 font-bold text-sm')
+
+                ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2 text-slate-400')
 
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
