@@ -307,42 +307,10 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
                         ui.label(label_affiche).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-            # BOUTON D'ACCÈS À L'ÉCRAN DÉDIÉ DE RECHERCHE DE THÈME
-            with ui.column().classes('w-full mt-4 px-2'):
-                ui.button("🔍 Recherche par mot clef", on_click=lambda: set_step('RECHERCHE')) \
-                    .classes('w-full py-4 bg-white text-slate-700 border-2 border-slate-200 rounded-2xl shadow-sm font-bold text-base normal-case')
-                
-        # --- ÉTAPE 2 : BOUTONS PUIS ACCÈS RECHERCHE DÉDIÉE EN DESSOUS ---
-        elif state.step == 2:
-            ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
-
-            query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
-            options = db.fetch_options("etape_vie", state.lang, query_filter)
-            
-            with ui.element('div').classes('grid-container w-full mb-4'):
-                for o in options:
-                    icon = ICONES_FAMILLES.get(o.upper(), ICONES_FAMILLES["DEFAULT"])
-                    
-                    with ui.card().classes('q-card h-28 items-center justify-center text-center cursor-pointer shadow-sm') \
-                        .style('border: 2px solid #e2e8f0 !important;') \
-                        .on('click', lambda o=o: set_step(3, {'etape_val': o})):
-                        ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
-                        ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
-
-            # BOUTON D'ACCÈS À L'ÉCRAN DÉDIÉ DE RECHERCHE DE THÈME (SANS BUG SUR iPHONE)
-            with ui.column().classes('w-full mb-4 px-2'):
-                ui.button("🔍 Rechercher un thème direct...", on_click=lambda: set_step('RECHERCHE')) \
-                    .classes('w-full py-4 bg-white text-slate-700 border-2 border-slate-200 rounded-2xl shadow-sm font-bold text-base normal-case')
-            
-            ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2')
-
-        # --- ÉCRAN DÉDIÉ : RECHERCHE DE THÈME EN PLEIN ÉCRAN ---
-        elif state.step == 'RECHERCHE':
-            ui.label("🔍 Recherche de thème").classes('text-xl font-bold text-slate-800 w-full mb-4 px-2')
-            
+        # --- RECHERCHE THÈMES DIRECTE ---
             options_faq = {}
             try:
-                conn_faq = db.get_connection()    
+                conn_faq = db.get_connection()
                 conn_faq.row_factory = sqlite3.Row
                 col_theme = "theme" if state.lang == 'FR' else "theme_en"
                 
@@ -354,20 +322,117 @@ def build_ui(state, h_zone, c_zone):
                 """
                 rows_faq = conn_faq.cursor().execute(query_faq).fetchall()
                 conn_faq.close()
+
                 options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
             except Exception as ex:
                 print("Erreur SQL FAQ:", ex)
 
-            with ui.column().classes('w-full gap-2 px-2'):
-                ui.label("Cliquez sur le thème recherché :").classes('text-xs font-bold text-slate-500 uppercase mb-2')
-                
-                for label_theme, num_art in options_faq.items():
-                    ui.button(
-                        label_theme, 
-                        on_click=lambda n=num_art: set_step('DIRECT', {'art_cible': n})
-                    ).classes('w-full py-3 bg-white text-slate-800 border border-slate-200 rounded-xl shadow-sm normal-case text-left justify-start px-4 font-bold')
+            def aller_a_article(e):
+                valeur_selectionnee = e.value
+                if valeur_selectionnee in options_faq:
+                    num_art = options_faq[valeur_selectionnee]
+                    set_step('DIRECT', {'art_cible': num_art})
 
-            ui.button(txt['back'], on_click=lambda: set_step(2 if 'etape_val' in state.choix else 1)).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-6')
+            # AFFICHAGE FORCÉ DU CHAMP DE SAISIE
+            with ui.column().classes('w-full mb-4 px-2'):
+                ui.select(
+                    options=list(options_faq.keys()),
+                    with_input=True,
+                    label="🔍     Recherche par mot clef...",
+                    on_change=aller_a_article
+                ).props('standout bg-white input-class="text-center text-blue-600" label-color="blue-600"') \
+                 .classes('w-full shadow-sm rounded-xl border border-slate-200 text-blue-600') \
+                 .style('color: #2563eb;')
+
+        # --- ÉTAPE 2 / 2-1 : BOUTONS OU RECHERCHE DÉDIÉE ---
+        elif state.step in [2, '2-1']:
+            # Charger les options FAQ (commun aux étapes 2 et 2-1)
+            options_faq = {}
+            try:
+                conn_faq = db.get_connection()
+                conn_faq.row_factory = sqlite3.Row
+                col_theme = "theme" if state.lang == 'FR' else "theme_en"
+                
+                query_faq = f"""
+                    SELECT DISTINCT {col_theme} AS label, {col_filtre} AS article_cible 
+                    FROM questions 
+                    WHERE {col_theme} IS NOT NULL AND {col_theme} != '' 
+                    AND {col_filtre} IS NOT NULL AND {col_filtre} != ''
+                """
+                rows_faq = conn_faq.cursor().execute(query_faq).fetchall()
+                conn_faq.close()
+
+                options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
+                state.options_faq = options_faq  # Stockage dans l'état pour l'étape 2-1
+            except Exception as ex:
+                print("Erreur SQL FAQ:", ex)
+
+            # Gestion de l'affichage selon l'étape active (2 ou 2-1)
+            if state.step == '2-1':
+                # --- ÉTAPE 2-1 : Page dédiée à la recherche par mot-clé ---
+                ui.label("🔍 Recherche par mot-clé").classes('text-xl font-bold text-blue-600 text-center w-full mb-6')
+
+                search_input = ui.input(
+                    label="Tapez votre recherche ici...",
+                    placeholder="Ex: Salaire, congés, période d'essai..."
+                ).props('autofocus outlined clearable input-class="text-center text-blue-600 text-lg" label-color="blue-600"') \
+                 .classes('w-full bg-white shadow-md rounded-2xl text-blue-600 mb-4 p-2') \
+                 .style('color: #2563eb;')
+
+                results_container = ui.column().classes('w-full gap-2 mb-6')
+
+                def update_results():
+                    query = (search_input.value or "").lower().strip()
+                    results_container.clear()
+                    
+                    with results_container:
+                        if not query:
+                            ui.label("Commencez à saisir un mot pour voir les suggestions...").classes('text-slate-400 text-center w-full italic text-sm py-4')
+                            return
+
+                        opt_dict = getattr(state, 'options_faq', options_faq)
+                        matching_options = {k: v for k, v in opt_dict.items() if query in k.lower()}
+
+                        if not matching_options:
+                            ui.label("Aucun résultat trouvé.").classes('text-red-500 text-center w-full py-4')
+                        else:
+                            for label, num_art in matching_options.items():
+                                with ui.card().classes('w-full p-3 cursor-pointer bg-white shadow-sm rounded-xl border border-slate-100 hover:bg-blue-50 transition') \
+                                     .on('click', lambda n=num_art: set_step('DIRECT', {'art_cible': n})):
+                                    ui.label(label).classes('text-blue-700 font-medium text-sm')
+
+                search_input.on('update:model-value', update_results)
+                update_results()
+
+                ui.button('⬅ RETOUR', on_click=lambda: set_step(2)) \
+                  .props('flat') \
+                  .classes('w-full mt-4 text-blue-600 font-semibold')
+
+            else:
+                # --- ÉTAPE 2 : Écran principal ---
+                ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
+
+                # 1. D'abord les boutons des étapes de vie
+                query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
+                options = db.fetch_options("etape_vie", state.lang, query_filter)
+                
+                with ui.element('div').classes('grid-container w-full mb-4'):
+                    for o in options:
+                        icon = ICONES_FAMILLES.get(o.upper(), ICONES_FAMILLES["DEFAULT"])
+                        
+                        with ui.card().classes('q-card h-28 items-center justify-center text-center cursor-pointer shadow-sm') \
+                            .style('border: 2px solid #e2e8f0 !important;') \
+                            .on('click', lambda o=o: set_step(3, {'etape_val': o})):
+                            ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
+                            ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
+
+                # 2. Bouton déclencheur élégant vers l'étape de recherche dédiée '2-1'
+                with ui.card().classes('w-full mb-4 p-4 cursor-pointer bg-white shadow-sm rounded-xl border border-slate-200 flex flex-row items-center justify-between hover:bg-slate-50 transition') \
+                     .on('click', lambda: set_step('2-1')):
+                    ui.label('🔍     Recherche par mot clef...').classes('text-blue-600 font-normal')
+                    ui.icon('expand_more', color='slate-500')
+
+                ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2')
 
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
@@ -558,12 +623,12 @@ def main_page():
     
     build_ui(user_state, h_zone, c_zone)
 
-# --- 9. CONFIGURATION ET LANCEMENT SERVEUR ---
-ui.run(
-    title="Guide CCN", 
-    host='0.0.0.0', 
-    port=int(os.environ.get("PORT", 8080)), 
-    reload=False,
-    reconnect_timeout=30,
-    show=False 
-)
+if __name__ in {"__main__", "__mp_main__"}:
+    ui.run(
+        title="Guide CCN", 
+        host='0.0.0.0', 
+        port=int(os.environ.get("PORT", 8080)), 
+        reload=False,
+        reconnect_timeout=30,
+        show=False 
+    )
