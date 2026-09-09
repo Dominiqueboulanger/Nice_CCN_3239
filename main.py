@@ -307,11 +307,11 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
                         ui.label(label_affiche).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-            # BOUTON D'ACCÈS À L'ÉCRAN DÉDIÉ DE RECHERCHE DE THÈME (SANS BUG SUR iPHONE)
+            # BOUTON D'ACCÈS À L'ÉCRAN DÉDIÉ DE RECHERCHE DE THÈME
             with ui.column().classes('w-full mt-4 px-2'):
-                ui.button("🔍 Rechercher un thème direct...", on_click=lambda: set_step('RECHERCHE')) \
+                ui.button("🔍 Recherche par mot clef", on_click=lambda: set_step('RECHERCHE')) \
                     .classes('w-full py-4 bg-white text-slate-700 border-2 border-slate-200 rounded-2xl shadow-sm font-bold text-base normal-case')
-
+                
         # --- ÉTAPE 2 : BOUTONS PUIS ACCÈS RECHERCHE DÉDIÉE EN DESSOUS ---
         elif state.step == 2:
             ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
