@@ -307,46 +307,15 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
                         ui.label(label_affiche).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-        # --- RECHERCHE THÈMES DIRECTE ---
-            options_faq = {}
-            try:
-                conn_faq = db.get_connection()
-                conn_faq.row_factory = sqlite3.Row
-                col_theme = "theme" if state.lang == 'FR' else "theme_en"
-                
-                query_faq = f"""
-                    SELECT DISTINCT {col_theme} AS label, {col_filtre} AS article_cible 
-                    FROM questions 
-                    WHERE {col_theme} IS NOT NULL AND {col_theme} != '' 
-                    AND {col_filtre} IS NOT NULL AND {col_filtre} != ''
-                """
-                rows_faq = conn_faq.cursor().execute(query_faq).fetchall()
-                conn_faq.close()
+            # BOUTON D'ACCÈS À L'ÉCRAN DÉDIÉ DE RECHERCHE DE THÈME (SANS BUG SUR iPHONE)
+            with ui.column().classes('w-full mt-4 px-2'):
+                ui.button("🔍 Rechercher un thème direct...", on_click=lambda: set_step('RECHERCHE')) \
+                    .classes('w-full py-4 bg-white text-slate-700 border-2 border-slate-200 rounded-2xl shadow-sm font-bold text-base normal-case')
 
-                options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
-            except Exception as ex:
-                print("Erreur SQL FAQ:", ex)
-
-            def aller_a_article(e):
-                valeur_selectionnee = e.value
-                if valeur_selectionnee in options_faq:
-                    num_art = options_faq[valeur_selectionnee]
-                    set_step('DIRECT', {'art_cible': num_art})
-
-            # AFFICHAGE FORCÉ DU CHAMP DE SAISIE
-            with ui.column().classes('w-full mb-4 px-2'):
-                ui.select(
-                    options=list(options_faq.keys()),
-                    with_input=True,
-                    label="🔍 Rechercher un thème direct...",
-                    on_change=aller_a_article
-                ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
-
-        # --- ÉTAPE 2 : BOUTONS PUIS CHAMP DE RECHERCHE EN DESSOUS ---
+        # --- ÉTAPE 2 : BOUTONS PUIS ACCÈS RECHERCHE DÉDIÉE EN DESSOUS ---
         elif state.step == 2:
             ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
 
-            # 1. D'abord les boutons des étapes de vie
             query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
             options = db.fetch_options("etape_vie", state.lang, query_filter)
             
@@ -360,10 +329,20 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
                         ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-            # 2. Ensuite le champ de recherche direct (ainsi il reste bien en vue et ne se coince pas tout en haut sous Safari)
+            # BOUTON D'ACCÈS À L'ÉCRAN DÉDIÉ DE RECHERCHE DE THÈME (SANS BUG SUR iPHONE)
+            with ui.column().classes('w-full mb-4 px-2'):
+                ui.button("🔍 Rechercher un thème direct...", on_click=lambda: set_step('RECHERCHE')) \
+                    .classes('w-full py-4 bg-white text-slate-700 border-2 border-slate-200 rounded-2xl shadow-sm font-bold text-base normal-case')
+            
+            ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2')
+
+        # --- ÉCRAN DÉDIÉ : RECHERCHE DE THÈME EN PLEIN ÉCRAN ---
+        elif state.step == 'RECHERCHE':
+            ui.label("🔍 Recherche de thème").classes('text-xl font-bold text-slate-800 w-full mb-4 px-2')
+            
             options_faq = {}
             try:
-                conn_faq = db.get_connection()
+                conn_faq = db.get_connection()    
                 conn_faq.row_factory = sqlite3.Row
                 col_theme = "theme" if state.lang == 'FR' else "theme_en"
                 
@@ -375,26 +354,20 @@ def build_ui(state, h_zone, c_zone):
                 """
                 rows_faq = conn_faq.cursor().execute(query_faq).fetchall()
                 conn_faq.close()
-
                 options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
             except Exception as ex:
                 print("Erreur SQL FAQ:", ex)
 
-            def aller_a_article(e):
-                valeur_selectionnee = e.value
-                if valeur_selectionnee in options_faq:
-                    num_art = options_faq[valeur_selectionnee]
-                    set_step('DIRECT', {'art_cible': num_art})
+            with ui.column().classes('w-full gap-2 px-2'):
+                ui.label("Cliquez sur le thème recherché :").classes('text-xs font-bold text-slate-500 uppercase mb-2')
+                
+                for label_theme, num_art in options_faq.items():
+                    ui.button(
+                        label_theme, 
+                        on_click=lambda n=num_art: set_step('DIRECT', {'art_cible': n})
+                    ).classes('w-full py-3 bg-white text-slate-800 border border-slate-200 rounded-xl shadow-sm normal-case text-left justify-start px-4 font-bold')
 
-            with ui.column().classes('w-full mb-4 px-2'):
-                ui.select(
-                    options=list(options_faq.keys()),
-                    with_input=True,
-                    label="🔍 Rechercher un thème direct...",
-                    on_change=aller_a_article
-                ).classes('w-full bg-white shadow-sm rounded-xl border border-slate-200')
-            
-            ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2')
+            ui.button(txt['back'], on_click=lambda: set_step(2 if 'etape_val' in state.choix else 1)).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-6')
 
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
