@@ -379,9 +379,7 @@ def build_ui(state, h_zone, c_zone):
                  .classes('w-full bg-white shadow-md rounded-2xl text-blue-600 mb-4 p-2') \
                  .style('color: #2563eb;')
 
-                # Conteneur des résultats avec un padding important en bas (pb-64) 
-                # pour permettre le scroll au-dessus du clavier virtuel
-                results_container = ui.column().classes('w-full gap-2 mb-32 pb-64')
+                results_container = ui.column().classes('w-full gap-2')
 
                 def update_results():
                     query = (search_input.value or "").lower().strip()
@@ -410,6 +408,9 @@ def build_ui(state, h_zone, c_zone):
                   .props('flat') \
                   .classes('w-full mt-4 text-blue-600 font-semibold')
 
+                # Espaceur physique bas de page de 350px pour garantir le scroll au-dessus du clavier iOS
+                ui.element('div').style('height: 350px;')
+
             else:
                 # --- ÉTAPE 2 : Affichage des deux cartouches principales ---
                 ui.label(txt['step2_title']).classes('text-xl font-bold mb-6 text-slate-800 w-full text-center')
@@ -432,7 +433,7 @@ def build_ui(state, h_zone, c_zone):
                     ui.label("Recherche par mot-clé").classes('text-blue-700 font-bold text-sm')
 
                 ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2 text-slate-400')
-
+                
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
             f = f"WHERE (etape_vie = '{state.choix['etape_val']}' OR etape_vie_en = '{state.choix['etape_val']}') AND {col_filtre} != ''"
