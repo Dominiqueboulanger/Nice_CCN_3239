@@ -409,30 +409,46 @@ def build_ui(state, h_zone, c_zone):
                   .classes('w-full mt-4 text-blue-600 font-semibold')
 
             else:
-                # --- ÉTAPE 2 : Écran principal ---
-                ui.label(txt['step2_title']).classes('text-lg font-bold text-slate-700 w-full mb-3 px-2 text-center')
+                # --- ÉTAPE 2-1 : Page dédiée à la recherche par mot-clé ---
+                ui.label("🔍 Recherche par mot-clé").classes('text-xl font-bold text-blue-600 text-center w-full mb-6')
 
-                # 1. D'abord les boutons des étapes de vie
-                query_filter = f"WHERE {col_filtre} IS NOT NULL AND {col_filtre} != ''"
-                options = db.fetch_options("etape_vie", state.lang, query_filter)
-                
-                with ui.element('div').classes('grid-container w-full mb-4'):
-                    for o in options:
-                        icon = ICONES_FAMILLES.get(o.upper(), ICONES_FAMILLES["DEFAULT"])
-                        
-                        with ui.card().classes('q-card h-28 items-center justify-center text-center cursor-pointer shadow-sm') \
-                            .style('border: 2px solid #e2e8f0 !important;') \
-                            .on('click', lambda o=o: set_step(3, {'etape_val': o})):
-                            ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
-                            ui.label(o).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
+                search_input = ui.input(
+                    label="Tapez votre recherche ici...",
+                    placeholder="Ex: Salaire, congés, période d'essai..."
+                ).props('autofocus outlined clearable input-class="text-center text-blue-600 text-lg" label-color="blue-600"') \
+                 .classes('w-full bg-white shadow-md rounded-2xl text-blue-600 mb-4 p-2') \
+                 .style('color: #2563eb;')
 
-                # 2. Bouton déclencheur élégant vers l'étape de recherche dédiée '2-1'
-                with ui.card().classes('w-full mb-4 p-4 cursor-pointer bg-white shadow-sm rounded-xl border border-slate-200 flex flex-row items-center justify-between hover:bg-slate-50 transition') \
-                     .on('click', lambda: set_step('2-1')):
-                    ui.label('🔍     Recherche par mot clef...').classes('text-blue-600 font-normal')
-                    ui.icon('expand_more', color='slate-500')
+                # Conteneur des résultats avec un padding important en bas (pb-64) 
+                # pour permettre le scroll au-dessus du clavier virtuel
+                results_container = ui.column().classes('w-full gap-2 mb-32 pb-64')
 
-                ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2')
+                def update_results():
+                    query = (search_input.value or "").lower().strip()
+                    results_container.clear()
+                    
+                    with results_container:
+                        if not query:
+                            ui.label("Commencez à saisir un mot pour voir les suggestions...").classes('text-slate-400 text-center w-full italic text-sm py-4')
+                            return
+
+                        opt_dict = getattr(state, 'options_faq', options_faq)
+                        matching_options = {k: v for k, v in opt_dict.items() if query in k.lower()}
+
+                        if not matching_options:
+                            ui.label("Aucun résultat trouvé.").classes('text-red-500 text-center w-full py-4')
+                        else:
+                            for label, num_art in matching_options.items():
+                                with ui.card().classes('w-full p-3 cursor-pointer bg-white shadow-sm rounded-xl border border-slate-100 hover:bg-blue-50 transition') \
+                                     .on('click', lambda n=num_art: set_step('DIRECT', {'art_cible': n})):
+                                    ui.label(label).classes('text-blue-700 font-medium text-sm')
+
+                search_input.on('update:model-value', update_results)
+                update_results()
+
+                ui.button('⬅ RETOUR', on_click=lambda: set_step(2)) \
+                  .props('flat') \
+                  .classes('w-full mt-4 text-blue-600 font-semibold')
 
         # --- ÉTAPE 3 : FAMILLES ---
         elif state.step == 3:
