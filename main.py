@@ -7,6 +7,8 @@ import sqlite3
 import random 
 import game_definitions
 import game_translation
+import unicodedata
+import difflib
 
 try:
     os.system("lsof -t -i:9000 | xargs kill -9 > /dev/null 2>&1")
@@ -41,27 +43,20 @@ class AppState:
         self.annexes_cache = None          
 
 ICONES_FAMILLES = {
-    # Étapes de vie (Nouveaux intitulés)
     "ENTRER & SORTIR DU CONTRAT": "fa-door-open",
     "ENTERING AND EXITING THE CONTRACT": "fa-door-open",
     "AU QUOTIDIEN : 📆🏝️💶": "fa-folder-open",
     "EVERYDAY LIFE: 📆🏝️💶": "fa-folder-open",
-
-    # Embauche & Contrat
     "CONTRAT & EMBAUCHE": "fa-file-signature",
     "CONTRACT & HIRING": "fa-file-signature",
     "MODALITÉS": "fa-sliders",
     "TERMS AND CONDITIONS": "fa-sliders",
-    
-    # Temps de travail & Congés
     "DURÉE DU TRAVAIL": "fa-clock",
     "WORKING HOURS": "fa-clock",
     "REPOS HEBDOMADAIRE": "fa-calendar-minus",
     "WEEKLY REST": "fa-calendar-minus",
     "JOURS FÉRIÉS, CONGÉS": "fa-umbrella-beach",
     "HOLIDAYS & ABSENCES": "fa-umbrella-beach",
-    
-    # Rémunération & Avantages
     "SALAIRE": "fa-money-bill-wave",
     "SALARY": "fa-money-bill-wave",
     "RÉMUNÉRATION": "fa-euro-sign",
@@ -71,22 +66,41 @@ ICONES_FAMILLES = {
     "SENIORITY": "fa-award",
     "RETRAITE COMPLÉMENTAIRE": "fa-piggy-bank",
     "EXTRA PENSION": "fa-piggy-bank",
-    
-    # Absences / Classification
     "ABSENCES": "fa-user-clock",
     "CLASSIFICATION DES EMPLOIS": "fa-layer-group",
     "JOB CLASSIFICATION": "fa-layer-group",
     "SANTÉ & SÉCURITÉ": "fa-user-nurse",
-    
-    # Fin de contrat
     "RUPTURE": "fa-handshake-slash",
     "TERMINATION": "fa-handshake-slash",
     "LE DERNIER JOUR": "fa-calendar-check",
     "THE LAST DAY": "fa-calendar-check",
-    
-    # Icône par défaut
     "DEFAULT": "fa-bookmark"
 }
+
+def nettoyer_texte(texte):
+    if not texte:
+        return ""
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texte)
+        if unicodedata.category(c) != 'Mn'
+    ).lower()
+
+def correspond_recherche(requete, texte_cible):
+    norm_q = nettoyer_texte(requete)
+    norm_t = nettoyer_texte(texte_cible)
+    
+    if norm_q in norm_t:
+        return True
+        
+    mots_requete = norm_q.split()
+    mots_cible = norm_t.split()
+    
+    for mq in mots_requete:
+        matches = difflib.get_close_matches(mq, mots_cible, n=1, cutoff=0.70)
+        if matches:
+            return True
+            
+    return False
 
 # --- 4. COMPOSANTS D'AFFICHAGE RÉUTILISABLES ---
 def get_linked_articles(num_article):
@@ -168,7 +182,6 @@ def build_ui(state, h_zone, c_zone):
     c_zone.style('margin-top: 44px;' if state.step != 0 else 'margin-top: 0px;')
     
     def set_step(s, data=None):
-        """Mise à jour unique, propre et sécurisée de l'état applicatif avec Google Analytics"""
         state.step = s
         if data: 
             if 'colonne_metier' in data:
@@ -264,7 +277,7 @@ def build_ui(state, h_zone, c_zone):
                 .props('flat dense icon=home color=primary') \
                 .classes('w-full mb-4 text-slate-500 border-b pb-2')
 
-        # --- ÉTAPE 1 : CHOIX DU MÉTIER ---
+        # --- ÉTAPE 1 : CHOIX DU MÉTIER (SANS RECHERCHE PAR MOT-CLÉ) ---
         if state.step == 1:
             with ui.dialog() as direct_dialog, ui.card().classes('items-center p-12 rounded-3xl') \
                 .style('width: 350px !important; min-height: 450px !important; justify-content: center !important;'):
@@ -307,46 +320,8 @@ def build_ui(state, h_zone, c_zone):
                         ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
                         ui.label(label_affiche).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
 
-        # --- RECHERCHE THÈMES DIRECTE ---
-            options_faq = {}
-            try:
-                conn_faq = db.get_connection()
-                conn_faq.row_factory = sqlite3.Row
-                col_theme = "theme" if state.lang == 'FR' else "theme_en"
-                
-                query_faq = f"""
-                    SELECT DISTINCT {col_theme} AS label, {col_filtre} AS article_cible 
-                    FROM questions 
-                    WHERE {col_theme} IS NOT NULL AND {col_theme} != '' 
-                    AND {col_filtre} IS NOT NULL AND {col_filtre} != ''
-                """
-                rows_faq = conn_faq.cursor().execute(query_faq).fetchall()
-                conn_faq.close()
-
-                options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
-            except Exception as ex:
-                print("Erreur SQL FAQ:", ex)
-
-            def aller_a_article(e):
-                valeur_selectionnee = e.value
-                if valeur_selectionnee in options_faq:
-                    num_art = options_faq[valeur_selectionnee]
-                    set_step('DIRECT', {'art_cible': num_art})
-
-            # AFFICHAGE FORCÉ DU CHAMP DE SAISIE
-            with ui.column().classes('w-full mb-4 px-2'):
-                ui.select(
-                    options=list(options_faq.keys()),
-                    with_input=True,
-                    label="🔍     Recherche par mot clef...",
-                    on_change=aller_a_article
-                ).props('standout bg-white input-class="text-center text-blue-600" label-color="blue-600"') \
-                 .classes('w-full shadow-sm rounded-xl border border-slate-200 text-blue-600') \
-                 .style('color: #2563eb;')
-
-       # --- ÉTAPE 2 / 2-1 : BOUTONS OU RECHERCHE DÉDIÉE ---
+        # --- ÉTAPE 2 / 2-1 : BOUTONS OU RECHERCHE DÉDIÉE ---
         elif state.step in [2, '2-1']:
-            # Charger les options FAQ (commun aux étapes 2 et 2-1)
             options_faq = {}
             try:
                 conn_faq = db.get_connection()
@@ -363,18 +338,16 @@ def build_ui(state, h_zone, c_zone):
                 conn_faq.close()
 
                 options_faq = {row['label']: str(row['article_cible']) for row in rows_faq if row['label'] and row['article_cible']}
-                state.options_faq = options_faq  # Stockage dans l'état pour l'étape 2-1
+                state.options_faq = options_faq 
             except Exception as ex:
                 print("Erreur SQL FAQ:", ex)
 
-            # Gestion de l'affichage selon l'étape active (2 ou 2-1)
             if state.step == '2-1':
-                # --- ÉTAPE 2-1 : Page dédiée à la recherche par mot-clé ---
                 ui.label("🔍 Recherche par mot-clé").classes('text-xl font-bold text-blue-600 text-center w-full mb-6')
 
                 search_input = ui.input(
                     label="Tapez votre recherche ici...",
-                    placeholder="Ex: Salaire, congés, période d'essai..."
+                    placeholder="Ex: Salaire, conges, medecin..."
                 ).props('autofocus outlined clearable input-class="text-center text-blue-600 text-lg" label-color="blue-600"') \
                  .classes('w-full bg-white shadow-md rounded-2xl text-blue-600 mb-4 p-2') \
                  .style('color: #2563eb;')
@@ -382,7 +355,7 @@ def build_ui(state, h_zone, c_zone):
                 results_container = ui.column().classes('w-full gap-2')
 
                 def update_results():
-                    query = (search_input.value or "").lower().strip()
+                    query = (search_input.value or "").strip()
                     results_container.clear()
                     
                     with results_container:
@@ -391,7 +364,7 @@ def build_ui(state, h_zone, c_zone):
                             return
 
                         opt_dict = getattr(state, 'options_faq', options_faq)
-                        matching_options = {k: v for k, v in opt_dict.items() if query in k.lower()}
+                        matching_options = {k: v for k, v in opt_dict.items() if correspond_recherche(query, k)}
 
                         if not matching_options:
                             ui.label("Aucun résultat trouvé.").classes('text-red-500 text-center w-full py-4')
@@ -408,11 +381,9 @@ def build_ui(state, h_zone, c_zone):
                   .props('flat') \
                   .classes('w-full mt-4 text-blue-600 font-semibold')
 
-                # Espaceur physique bas de page de 350px pour garantir le scroll au-dessus du clavier iOS
                 ui.element('div').style('height: 350px;')
 
             else:
-                # --- ÉTAPE 2 : Affichage des deux cartouches principales ---
                 ui.label(txt['step2_title']).classes('text-xl font-bold mb-6 text-slate-800 w-full text-center')
                 
                 f = f"WHERE {col_filtre} != ''"
@@ -426,7 +397,6 @@ def build_ui(state, h_zone, c_zone):
                             ui.html(f'<i class="fa-solid {icon} text-slate-700" style="font-size: 1.8rem;"></i>')
                             ui.label(ev).classes('text-xs font-black text-slate-800 uppercase leading-tight')
 
-                # Bouton pour basculer vers la recherche par mot-clé dédiée
                 with ui.card().classes('w-full p-4 cursor-pointer bg-blue-50 shadow-sm rounded-2xl border border-blue-200 hover:bg-blue-100 transition items-center text-center flex-row justify-center gap-3 mb-4') \
                      .on('click', lambda: set_step('2-1')):
                     ui.html('<i class="fa-solid fa-magnifying-glass text-blue-600" style="font-size: 1.2rem;"></i>')
@@ -451,7 +421,7 @@ def build_ui(state, h_zone, c_zone):
                         
             ui.button(txt['back'], on_click=lambda: set_step(2)).props('flat').classes('w-full mt-2')
 
-        # --- ÉTAPE 4 : THÈMES (AVEC BYPASS) ---
+        # --- ÉTAPE 4 : THÈMES ---
         elif state.step == 4:
             f = f"WHERE (famille = '{state.choix['famille_val']}' OR famille_en = '{state.choix['famille_val']}') AND {col_filtre} != ''"
             thms = db.fetch_options("theme", state.lang, f)
@@ -538,8 +508,17 @@ def build_ui(state, h_zone, c_zone):
                                 with ui.card().classes('w-full bg-white p-4 border border-slate-200 rounded-3xl shadow-sm items-center justify-between text-center gap-2'):
                                     ui.label(mod['titre']).classes('text-slate-800 font-bold text-xs leading-snug my-auto')
                                     cible_pdf = f"/static/{mod['fichier']}"
+                                    
+                                    # GESTION DES COULEURS DES BOUTONS DE TÉLÉCHARGEMENT
+                                    if 'Cesu' in mod['fichier']:
+                                        couleur_bouton = 'green-700'
+                                    elif 'Assistante maternelle' in mod['fichier']:
+                                        couleur_bouton = 'red-600'
+                                    else:
+                                        couleur_bouton = 'indigo-900'
+                                    
                                     with ui.link(target=cible_pdf, new_tab=True).classes('style="text-decoration: none;"'):
-                                        ui.button(icon='download').props('round unelevated color=indigo-900').classes('text-white')
+                                        ui.button(icon='download').props(f'round unelevated color={couleur_bouton}').classes('text-white')
 
                         ui.button(txt['back'], on_click=lambda: set_step('LISTE_ANNEXES')).props('flat icon=arrow_back').classes('w-full text-slate-400 mt-4')
 
