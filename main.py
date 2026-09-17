@@ -277,7 +277,7 @@ def build_ui(state, h_zone, c_zone):
                 .props('flat dense icon=home color=primary') \
                 .classes('w-full mb-4 text-slate-500 border-b pb-2')
 
-        # --- ÉTAPE 1 : CHOIX DU MÉTIER (SANS RECHERCHE PAR MOT-CLÉ) ---
+        # --- ÉTAPE 1 : CHOIX DU MÉTIER ---
         if state.step == 1:
             with ui.dialog() as direct_dialog, ui.card().classes('items-center p-12 rounded-3xl') \
                 .style('width: 350px !important; min-height: 450px !important; justify-content: center !important;'):
@@ -316,9 +316,10 @@ def build_ui(state, h_zone, c_zone):
                         on_click_action = lambda c=m['c'], l=label_affiche: set_step(2, {'colonne_metier': c, 'label_metier': l})
                         st = 'border: 2px solid #e2e8f0 !important;'
 
-                    with ui.card().classes('q-card h-24 items-center justify-center text-center cursor-pointer shadow-sm').style(st).on('click', on_click_action):
-                        ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
-                        ui.label(label_affiche).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
+                    with ui.card().classes('q-card min-h-[5rem] p-2 items-center justify-center text-center cursor-pointer shadow-sm').style(st).on('click', on_click_action):
+                        if len(label_affiche) <= 55:
+                            ui.html(f'<i class="fa-solid {m["icon"]} mb-1 text-slate-700" style="font-size: 1.2rem;"></i>')
+                        ui.label(label_affiche).classes('text-[10px] font-bold uppercase leading-tight text-slate-800 px-1')
 
         # --- ÉTAPE 2 / 2-1 : BOUTONS OU RECHERCHE DÉDIÉE ---
         elif state.step in [2, '2-1']:
@@ -392,10 +393,11 @@ def build_ui(state, h_zone, c_zone):
                 with ui.element('div').classes('grid grid-cols-2 gap-4 w-full mb-6'):
                     for ev in etapes:
                         icon = ICONES_FAMILLES.get(ev.upper(), ICONES_FAMILLES["DEFAULT"])
-                        with ui.card().classes('w-full h-40 bg-white p-4 border border-slate-200 rounded-3xl shadow-sm items-center justify-center text-center cursor-pointer hover:bg-blue-50 transition gap-3') \
+                        with ui.card().classes('w-full min-h-[5rem] bg-white p-3 border border-slate-200 rounded-3xl shadow-sm items-center justify-center text-center cursor-pointer hover:bg-blue-50 transition gap-2') \
                              .on('click', lambda ev=ev: set_step(3, {'etape_val': ev})):
-                            ui.html(f'<i class="fa-solid {icon} text-slate-700" style="font-size: 1.8rem;"></i>')
-                            ui.label(ev).classes('text-xs font-black text-slate-800 uppercase leading-tight')
+                            if len(ev) <= 55:
+                                ui.html(f'<i class="fa-solid {icon} text-slate-700" style="font-size: 1.5rem;"></i>')
+                            ui.label(ev).classes('text-[10px] font-black text-slate-800 uppercase leading-tight px-1')
 
                 with ui.card().classes('w-full p-4 cursor-pointer bg-blue-50 shadow-sm rounded-2xl border border-blue-200 hover:bg-blue-100 transition items-center text-center flex-row justify-center gap-3 mb-4') \
                      .on('click', lambda: set_step('2-1')):
@@ -404,7 +406,7 @@ def build_ui(state, h_zone, c_zone):
 
                 ui.button(txt['back'], on_click=lambda: set_step(1)).props('flat').classes('w-full mt-2 text-slate-400')
                 
-        # --- ÉTAPE 3 : FAMILLES ---
+        # --- ÉTAPE 3 : FAMILLES (Suppression favicon si > 55 caractères) ---
         elif state.step == 3:
             f = f"WHERE (etape_vie = '{state.choix['etape_val']}' OR etape_vie_en = '{state.choix['etape_val']}') AND {col_filtre} != ''"
             fams = db.fetch_options("famille", state.lang, f)
@@ -413,15 +415,16 @@ def build_ui(state, h_zone, c_zone):
                 for f_v in fams:
                     icon = ICONES_FAMILLES.get(f_v.upper(), ICONES_FAMILLES["DEFAULT"])
                     
-                    with ui.card().classes('q-card h-20 items-center justify-center text-center cursor-pointer shadow-sm p-1') \
+                    with ui.card().classes('q-card min-h-[5rem] items-center justify-center text-center cursor-pointer shadow-sm p-2') \
                         .style('border: 2px solid #e2e8f0 !important;') \
                         .on('click', lambda f_v=f_v: set_step(4, {'famille_val': f_v})):
-                        ui.html(f'<i class="fa-solid {icon} mb-0.5 text-slate-700" style="font-size: 1.3rem;"></i>')
-                        ui.label(f_v).classes('text-[11px] font-bold uppercase leading-tight text-slate-800 px-0.5')
+                        if len(f_v) <= 55:
+                            ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.3rem;"></i>')
+                        ui.label(f_v).classes('text-[10px] font-bold uppercase leading-tight text-slate-800 px-1')
                         
             ui.button(txt['back'], on_click=lambda: set_step(2)).props('flat').classes('w-full mt-2')
 
-        # --- ÉTAPE 4 : THÈMES ---
+        # --- ÉTAPE 4 : THÈMES (Suppression favicon si > 55 caractères) ---
         elif state.step == 4:
             f = f"WHERE (famille = '{state.choix['famille_val']}' OR famille_en = '{state.choix['famille_val']}') AND {col_filtre} != ''"
             thms = db.fetch_options("theme", state.lang, f)
@@ -442,11 +445,12 @@ def build_ui(state, h_zone, c_zone):
 
                     icon = ICONES_FAMILLES.get(t.upper(), ICONES_FAMILLES["DEFAULT"])
 
-                    with ui.card().classes('q-card h-24 items-center justify-center text-center cursor-pointer shadow-sm') \
+                    with ui.card().classes('q-card min-h-[5rem] items-center justify-center text-center cursor-pointer shadow-sm p-2') \
                         .style('border: 2px solid #e2e8f0 !important;') \
                         .on('click', au_clic_theme):
-                        ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.6rem;"></i>')
-                        ui.label(t).classes('text-xs font-bold uppercase leading-tight text-slate-800 px-1')
+                        if len(t) <= 55:
+                            ui.html(f'<i class="fa-solid {icon} mb-1 text-slate-700" style="font-size: 1.4rem;"></i>')
+                        ui.label(t).classes('text-[10px] font-bold uppercase leading-tight text-slate-800 px-1')
 
             ui.button(txt['back'], on_click=lambda: set_step(3)).props('flat').classes('w-full mt-4')
 
@@ -509,7 +513,6 @@ def build_ui(state, h_zone, c_zone):
                                     ui.label(mod['titre']).classes('text-slate-800 font-bold text-xs leading-snug my-auto')
                                     cible_pdf = f"/static/{mod['fichier']}"
                                     
-                                    # GESTION DES COULEURS DES BOUTONS DE TÉLÉCHARGEMENT
                                     if 'Cesu' in mod['fichier']:
                                         couleur_bouton = 'green-700'
                                     elif 'Assistante maternelle' in mod['fichier']:
